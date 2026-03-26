@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>Ever Ready — Expenses v5</title>
+<title>Ever Ready — Expenses v6</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -338,6 +338,13 @@ async function apiSave(payload) {
     body: JSON.stringify(payload)
   });
 }
+async function apiAppendExpense(expense) {
+  await fetch(WORKER, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Action": "append-expense" },
+    body: JSON.stringify({ expense })
+  });
+}
 
 // Strip photos before sending to KV — photos stay in localStorage only
 function expensesForKV(expenses) {
@@ -372,12 +379,10 @@ async function loadAll() {
     allExpenses  = mergePhotos(kvExpenses);
     allBatches   = data.batches   || [];
     allRecurring = data.recurring || [];
-    // Cache to localStorage as backup
     localStorage.setItem("expenses-kv",  JSON.stringify(kvExpenses));
     localStorage.setItem("batches",      JSON.stringify(allBatches));
     localStorage.setItem("recurring",    JSON.stringify(allRecurring));
   } catch(e) {
-    // Fallback to localStorage if offline
     try {
       const kvExpenses = JSON.parse(localStorage.getItem("expenses-kv") || "[]");
       allExpenses = mergePhotos(kvExpenses);
@@ -389,13 +394,11 @@ async function loadAll() {
 
 async function saveAll() {
   try {
-    // Never send photos to KV — strip them before saving
     await apiSave({
       expenses:  expensesForKV(allExpenses),
       batches:   allBatches,
       recurring: allRecurring
     });
-    // Keep local KV cache in sync
     localStorage.setItem("expenses-kv",  JSON.stringify(expensesForKV(allExpenses)));
     localStorage.setItem("batches",      JSON.stringify(allBatches));
     localStorage.setItem("recurring",    JSON.stringify(allRecurring));
@@ -524,6 +527,7 @@ async function runOCR(){
   document.getElementById("ai-extract-btn").disabled=false;
 }
 
+// ── UPDATED: submitExpense uses append-expense, not saveAll ───
 async function submitExpense(){
   const desc=document.getElementById("f-desc").value.trim();
   const amount=parseFloat(document.getElementById("f-amount").value);
@@ -533,29 +537,33 @@ async function submitExpense(){
   if(!amount||amount<=0){ alert("Please enter a valid amount"); return; }
   if(!date){ alert("Please enter a date"); return; }
 
-  // Immediate feedback — no waiting
   const btn=document.getElementById("submit-btn");
   btn.disabled=true;
   btn.textContent="Submitting…";
 
   const id=Date.now().toString();
-
-  // Save photos to localStorage only (never goes to KV)
   savePhotosLocally(id, capturedPhotos.slice());
 
-  // Append to in-memory array and save to KV (no photos = small payload = fast)
-  allExpenses.push({
+  const expense={
     id,
     description: desc.toUpperCase(),
     amount, date, notes,
-    photos: capturedPhotos.slice(), // kept in memory for this session
     status: "unpaid",
     submittedAt: new Date().toISOString(),
     paidOn: null, batchId: null
-  });
+  };
 
-  await saveAll();
-  showToast("Submitted!");
+  // Keep in local memory with photos for this session
+  allExpenses.push({ ...expense, photos: capturedPhotos.slice() });
+
+  try {
+    // Send only this one expense — worker merges it into KV safely
+    await apiAppendExpense(expense);
+    showToast("Submitted!");
+  } catch(e) {
+    showToast("Submit failed — check connection");
+  }
+
   resetSubmitForm();
 }
 
