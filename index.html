@@ -485,8 +485,24 @@ function resetSubmitForm(){
 
 function handlePhotos(e){
   Array.from(e.target.files).forEach(file=>{
+    const img=new Image();
     const reader=new FileReader();
-    reader.onload=ev=>{ capturedPhotos.push(ev.target.result); renderPhotoStrip(); document.getElementById("ai-extract-btn").disabled=false; };
+    reader.onload=ev=>{
+      img.onload=()=>{
+        const MAX=800;
+        let w=img.width, h=img.height;
+        if(w>h){ if(w>MAX){h=Math.round(h*MAX/w);w=MAX;} }
+        else { if(h>MAX){w=Math.round(w*MAX/h);h=MAX;} }
+        const canvas=document.createElement("canvas");
+        canvas.width=w; canvas.height=h;
+        canvas.getContext("2d").drawImage(img,0,0,w,h);
+        const compressed=canvas.toDataURL("image/jpeg",0.7);
+        capturedPhotos.push(compressed);
+        renderPhotoStrip();
+        document.getElementById("ai-extract-btn").disabled=false;
+      };
+      img.src=ev.target.result;
+    };
     reader.readAsDataURL(file);
   });
   e.target.value="";
