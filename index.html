@@ -4,415 +4,146 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<title>Ever Ready — Expenses v2</title>
+<title>Ever Ready — Expenses v3</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f5f5;--surface:#fff;--border:#e0e0e0;--text:#1a1a1a;--muted:#666;--hint:#999;
+  --primary:#2C3E50;--danger:#c0392b;--danger-bg:#fdecea;
+  --success:#27ae60;--success-bg:#d5f5e3;--info:#2980b9;--info-bg:#eaf4fb;
+  --radius:12px;--radius-sm:8px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;min-height:100vh}
+.screen{display:none}.screen.active{display:block}
 
-  :root {
-    --bg: #f5f5f5;
-    --surface: #ffffff;
-    --border: #e0e0e0;
-    --text: #1a1a1a;
-    --text-muted: #666;
-    --text-hint: #999;
-    --primary: #2C3E50;
-    --primary-light: #3d5166;
-    --danger: #c0392b;
-    --danger-bg: #fdecea;
-    --success: #27ae60;
-    --success-bg: #d5f5e3;
-    --warning: #e67e22;
-    --warning-bg: #fef9e7;
-    --info: #2980b9;
-    --info-bg: #eaf4fb;
-    --radius: 12px;
-    --radius-sm: 8px;
-    --shadow: 0 1px 3px rgba(0,0,0,0.08);
-  }
+/* PIN */
+.pin-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.pin-logo{font-size:13px;font-weight:500;color:var(--muted);text-align:center;margin-bottom:8px;letter-spacing:.5px;text-transform:uppercase}
+.pin-title{font-size:22px;font-weight:500;text-align:center;margin-bottom:32px}
+.pin-dots{display:flex;gap:12px;justify-content:center;margin-bottom:32px}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);background:var(--surface);transition:all .15s}
+.pin-dot.filled{background:var(--primary);border-color:var(--primary)}
+.pin-dot.error{background:var(--danger);border-color:var(--danger)}
+.pin-grid{display:grid;grid-template-columns:repeat(3,72px);gap:12px;justify-content:center;margin-bottom:16px}
+.pin-key{width:72px;height:72px;border-radius:50%;border:1px solid var(--border);background:var(--surface);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s;color:var(--text);-webkit-tap-highlight-color:transparent}
+.pin-key:active{background:var(--bg)}
+.pin-key.del{font-size:18px;color:var(--muted)}
+.pin-hint{font-size:13px;color:var(--hint);text-align:center;margin-top:8px}
 
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    font-size: 15px;
-    line-height: 1.5;
-    min-height: 100vh;
-  }
+/* Shell */
+.app-header{background:var(--primary);color:white;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.app-header-left{display:flex;align-items:center;gap:10px}
+.app-title{font-size:17px;font-weight:500}
+.logout-btn{background:none;border:1px solid rgba(255,255,255,.4);color:white;font-size:13px;padding:5px 12px;border-radius:20px;cursor:pointer}
 
-  .screen { display: none; }
-  .screen.active { display: block; }
+/* Nav tabs */
+.nav-tabs{display:flex;background:var(--primary);border-top:1px solid rgba(255,255,255,.15)}
+.nav-tab{flex:1;padding:10px;text-align:center;font-size:13px;color:rgba(255,255,255,.6);cursor:pointer;border:none;background:none;-webkit-tap-highlight-color:transparent}
+.nav-tab.active{color:white;border-bottom:2px solid white}
 
-  /* ── PIN Screen ── */
-  .pin-wrap {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-  }
-  .pin-logo {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-muted);
-    text-align: center;
-    margin-bottom: 8px;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-  }
-  .pin-title {
-    font-size: 22px;
-    font-weight: 500;
-    text-align: center;
-    margin-bottom: 32px;
-    color: var(--text);
-  }
-  .pin-dots {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    margin-bottom: 32px;
-  }
-  .pin-dot {
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    border: 2px solid var(--border);
-    background: var(--surface);
-    transition: all 0.15s;
-  }
-  .pin-dot.filled { background: var(--primary); border-color: var(--primary); }
-  .pin-dot.error  { background: var(--danger);  border-color: var(--danger); }
+.page{padding:20px;max-width:600px;margin:0 auto}
 
-  .pin-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 72px);
-    gap: 12px;
-    justify-content: center;
-    margin-bottom: 16px;
-  }
-  .pin-key {
-    width: 72px; height: 72px;
-    border-radius: 50%;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    font-size: 22px;
-    font-weight: 400;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: background 0.1s;
-    color: var(--text);
-    -webkit-tap-highlight-color: transparent;
-  }
-  .pin-key:active { background: var(--bg); }
-  .pin-key.del { font-size: 18px; color: var(--text-muted); }
-  .pin-hint { font-size: 13px; color: var(--text-hint); text-align: center; margin-top: 8px; }
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.card-title{font-size:13px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.card.clickable{cursor:pointer;transition:border-color .15s}
+.card.clickable:hover{border-color:#aaa}
 
-  /* ── App Shell ── */
-  .app-header {
-    background: var(--primary);
-    color: white;
-    padding: 16px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-  .app-header-left { display: flex; align-items: center; gap: 10px; }
-  .back-btn {
-    background: none; border: none; color: white;
-    font-size: 20px; cursor: pointer; padding: 4px;
-    display: none; line-height: 1;
-  }
-  .back-btn.visible { display: block; }
-  .app-title { font-size: 17px; font-weight: 500; }
-  .logout-btn {
-    background: none; border: 1px solid rgba(255,255,255,0.4);
-    color: white; font-size: 13px; padding: 5px 12px;
-    border-radius: 20px; cursor: pointer;
-  }
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 20px;border-radius:var(--radius-sm);font-size:15px;font-weight:500;cursor:pointer;border:none;transition:opacity .15s;width:100%;-webkit-tap-highlight-color:transparent;font-family:inherit}
+.btn:active{opacity:.85}
+.btn-primary{background:var(--primary);color:white}
+.btn-success{background:var(--success);color:white}
+.btn-danger{background:var(--danger);color:white}
+.btn-outline{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.btn:disabled{opacity:.4;pointer-events:none}
+.btn-sm{padding:8px 14px;font-size:13px;width:auto;border-radius:var(--radius-sm)}
 
-  .page { padding: 20px; max-width: 600px; margin: 0 auto; }
+/* Fields */
+.field{margin-bottom:16px}
+.field label{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-bottom:6px}
+.field input,.field textarea{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:15px;color:var(--text);background:var(--surface);outline:none;transition:border-color .15s;font-family:inherit}
+.field input:focus,.field textarea:focus{border-color:var(--primary)}
+.field textarea{resize:none;height:60px}
 
-  /* ── Cards ── */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px;
-    margin-bottom: 12px;
-  }
-  .card-title {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 12px;
-  }
+/* Photos */
+.photo-strip{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.photo-thumb-wrap{position:relative;width:80px;height:80px;flex-shrink:0}
+.photo-thumb-wrap img{width:100%;height:100%;object-fit:cover;border-radius:var(--radius-sm);border:1px solid var(--border);display:block}
+.photo-remove{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--danger);color:white;border:none;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.add-photo-btn{width:80px;height:80px;border-radius:var(--radius-sm);border:2px dashed var(--border);background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:4px;color:var(--muted);font-size:12px;flex-shrink:0;-webkit-tap-highlight-color:transparent}
+.add-photo-btn svg{width:24px;height:24px}
+input[type="file"]{display:none}
 
-  /* ── Buttons ── */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 13px 20px;
-    border-radius: var(--radius-sm);
-    font-size: 15px;
-    font-weight: 500;
-    cursor: pointer;
-    border: none;
-    transition: opacity 0.15s, background 0.15s;
-    width: 100%;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .btn:active { opacity: 0.85; }
-  .btn-primary { background: var(--primary); color: white; }
-  .btn-success { background: var(--success); color: white; }
-  .btn-danger  { background: var(--danger);  color: white; }
-  .btn-outline {
-    background: var(--surface);
-    color: var(--text);
-    border: 1px solid var(--border);
-  }
-  .btn:disabled { opacity: 0.4; pointer-events: none; }
-  .btn-sm { padding: 8px 14px; font-size: 13px; width: auto; border-radius: var(--radius-sm); }
+/* Pills */
+.pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500}
+.pill-unpaid{background:var(--danger-bg);color:var(--danger)}
+.pill-paid{background:var(--success-bg);color:var(--success)}
+.pill-recurring{background:#f0eaff;color:#6c3be8}
 
-  /* ── Form fields ── */
-  .field { margin-bottom: 16px; }
-  .field label {
-    display: block;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-muted);
-    margin-bottom: 6px;
-  }
-  .field input, .field textarea {
-    width: 100%;
-    padding: 11px 14px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    font-size: 15px;
-    color: var(--text);
-    background: var(--surface);
-    outline: none;
-    transition: border-color 0.15s;
-    font-family: inherit;
-  }
-  .field input:focus, .field textarea:focus { border-color: var(--primary); }
-  .field textarea { resize: none; height: 60px; }
+/* Expense rows */
+.expense-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)}
+.expense-row:last-child{border-bottom:none;padding-bottom:0}
+.expense-row:first-child{padding-top:0}
+.expense-desc{font-weight:500;font-size:15px;margin-bottom:3px}
+.expense-meta{font-size:13px;color:var(--muted)}
+.expense-amount{font-size:17px;font-weight:500;white-space:nowrap}
 
-  /* ── Photo strip ── */
-  .photo-strip {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-  }
-  .photo-thumb {
-    width: 80px; height: 80px;
-    border-radius: var(--radius-sm);
-    object-fit: cover;
-    border: 1px solid var(--border);
-    position: relative;
-    display: inline-block;
-  }
-  .photo-thumb-wrap {
-    position: relative;
-    width: 80px; height: 80px;
-    flex-shrink: 0;
-  }
-  .photo-thumb-wrap img {
-    width: 100%; height: 100%;
-    object-fit: cover;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border);
-    display: block;
-  }
-  .photo-remove {
-    position: absolute;
-    top: -6px; right: -6px;
-    width: 20px; height: 20px;
-    border-radius: 50%;
-    background: var(--danger);
-    color: white;
-    border: none;
-    font-size: 12px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    line-height: 1;
-  }
-  .add-photo-btn {
-    width: 80px; height: 80px;
-    border-radius: var(--radius-sm);
-    border: 2px dashed var(--border);
-    background: var(--bg);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    gap: 4px;
-    color: var(--text-muted);
-    font-size: 12px;
-    flex-shrink: 0;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .add-photo-btn svg { width: 24px; height: 24px; }
+/* Summary */
+.summary-bar{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.summary-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+.summary-label{font-size:12px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.summary-value{font-size:22px;font-weight:500}
+.summary-value.danger{color:var(--danger)}
+.summary-value.success{color:var(--success)}
 
-  /* ── Status pill ── */
-  .pill {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-  }
-  .pill-unpaid { background: var(--danger-bg);  color: var(--danger); }
-  .pill-paid   { background: var(--success-bg); color: var(--success); }
+/* AI status */
+.ai-status{background:var(--info-bg);border:1px solid #b3d7f0;border-radius:var(--radius-sm);padding:12px 14px;font-size:14px;color:var(--info);margin-bottom:16px;display:none}
+.ai-status.visible{display:flex;align-items:center;gap:10px}
+.spinner{width:16px;height:16px;border:2px solid #b3d7f0;border-top-color:var(--info);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-  /* ── Expense row ── */
-  .expense-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 14px 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .expense-row:last-child { border-bottom: none; padding-bottom: 0; }
-  .expense-row:first-child { padding-top: 0; }
-  .expense-desc { font-weight: 500; font-size: 15px; margin-bottom: 3px; }
-  .expense-meta { font-size: 13px; color: var(--text-muted); }
-  .expense-amount { font-size: 17px; font-weight: 500; white-space: nowrap; }
-  .expense-actions { display: flex; gap: 8px; margin-top: 8px; }
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1a1a1a;color:white;padding:12px 20px;border-radius:20px;font-size:14px;transition:transform .3s;z-index:999;white-space:nowrap;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
 
-  /* ── Summary bar ── */
-  .summary-bar {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 16px;
-  }
-  .summary-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 14px 16px;
-  }
-  .summary-label { font-size: 12px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-  .summary-value { font-size: 22px; font-weight: 500; }
-  .summary-value.danger  { color: var(--danger); }
-  .summary-value.success { color: var(--success); }
+/* Empty */
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty-icon{font-size:40px;margin-bottom:12px}
+.empty-title{font-size:17px;font-weight:500;color:var(--text);margin-bottom:6px}
 
-  /* ── AI status ── */
-  .ai-status {
-    background: var(--info-bg);
-    border: 1px solid #b3d7f0;
-    border-radius: var(--radius-sm);
-    padding: 12px 14px;
-    font-size: 14px;
-    color: var(--info);
-    margin-bottom: 16px;
-    display: none;
-  }
-  .ai-status.visible { display: flex; align-items: center; gap: 10px; }
-  .spinner {
-    width: 16px; height: 16px;
-    border: 2px solid #b3d7f0;
-    border-top-color: var(--info);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-    flex-shrink: 0;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal-inner{background:var(--surface);border-radius:var(--radius);padding:16px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.modal-title{font-size:16px;font-weight:500}
+.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1}
+.modal-imgs{display:flex;flex-direction:column;gap:10px}
+.modal-imgs img{width:100%;border-radius:var(--radius-sm);border:1px solid var(--border)}
 
-  /* ── Toast ── */
-  .toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: #1a1a1a;
-    color: white;
-    padding: 12px 20px;
-    border-radius: 20px;
-    font-size: 14px;
-    transition: transform 0.3s;
-    z-index: 999;
-    white-space: nowrap;
-    pointer-events: none;
-  }
-  .toast.show { transform: translateX(-50%) translateY(0); }
+/* Batch card */
+.batch-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px;cursor:pointer;transition:border-color .15s}
+.batch-card:hover{border-color:#aaa}
+.batch-header{display:flex;justify-content:space-between;align-items:flex-start}
+.batch-date{font-weight:500;font-size:15px}
+.batch-amount{font-size:18px;font-weight:500;color:var(--success)}
+.batch-meta{font-size:13px;color:var(--muted);margin-top:3px}
 
-  /* ── Empty state ── */
-  .empty {
-    text-align: center;
-    padding: 40px 20px;
-    color: var(--text-muted);
-  }
-  .empty-icon { font-size: 40px; margin-bottom: 12px; }
-  .empty-title { font-size: 17px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
-  .empty-sub { font-size: 14px; }
-
-  .divider { height: 1px; background: var(--border); margin: 16px 0; }
-  .section-label { font-size: 13px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
-
-  /* ── Receipt viewer modal ── */
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.75);
-    z-index: 500;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-  }
-  .modal-overlay.open { display: flex; }
-  .modal-inner {
-    background: var(--surface);
-    border-radius: var(--radius);
-    padding: 16px;
-    max-width: 500px;
-    width: 100%;
-    max-height: 80vh;
-    overflow-y: auto;
-  }
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 14px;
-  }
-  .modal-title { font-size: 16px; font-weight: 500; }
-  .modal-close {
-    background: none; border: none;
-    font-size: 22px; cursor: pointer;
-    color: var(--text-muted); line-height: 1;
-  }
-  .modal-imgs { display: flex; flex-direction: column; gap: 10px; }
-  .modal-imgs img { width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--border); }
-
-  input[type="file"] { display: none; }
+/* Recurring badge */
+.section-label{font-size:13px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;margin-top:4px}
 </style>
 </head>
 <body>
 
-<!-- PIN Screen -->
+<!-- PIN -->
 <div id="screen-pin" class="screen active">
   <div class="pin-wrap">
     <div class="pin-logo">Ever Ready First Aid</div>
     <div class="pin-title">Enter your PIN</div>
     <div class="pin-dots">
-      <div class="pin-dot" id="d0"></div>
-      <div class="pin-dot" id="d1"></div>
-      <div class="pin-dot" id="d2"></div>
-      <div class="pin-dot" id="d3"></div>
+      <div class="pin-dot" id="d0"></div><div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div><div class="pin-dot" id="d3"></div>
     </div>
     <div class="pin-grid">
       <button class="pin-key" onclick="pinKey('1')">1</button>
@@ -424,51 +155,32 @@
       <button class="pin-key" onclick="pinKey('7')">7</button>
       <button class="pin-key" onclick="pinKey('8')">8</button>
       <button class="pin-key" onclick="pinKey('9')">9</button>
-      <button class="pin-key" onclick="pinKey('')"></button>
+      <button class="pin-key"></button>
       <button class="pin-key" onclick="pinKey('0')">0</button>
       <button class="pin-key del" onclick="pinDel()">&#9003;</button>
     </div>
-    <div class="pin-hint" id="pin-hint">Employee: 1234 &nbsp;|&nbsp; Admin: 9999</div>
+    <div class="pin-hint">Employee: 1234 &nbsp;|&nbsp; Admin: 9999</div>
   </div>
 </div>
 
-<!-- Employee App -->
+<!-- Employee -->
 <div id="screen-employee" class="screen">
   <div class="app-header">
-    <div class="app-header-left">
-      <div class="app-title" id="emp-header-title">Add expense</div>
-    </div>
+    <div class="app-header-left"><div class="app-title" id="emp-header-title">Add expense</div></div>
     <button class="logout-btn" onclick="logout()">Sign out</button>
   </div>
-
-  <!-- Employee Home -->
-  <div id="emp-home" class="page">
-    <div class="card" style="text-align:center; padding: 28px 20px;">
-      <div style="font-size:15px; color:var(--text-muted); margin-bottom:6px;">Welcome back</div>
-      <div style="font-size:22px; font-weight:500; margin-bottom:20px;">Robert</div>
-      <button class="btn btn-primary" onclick="showEmpSubmit()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-        Submit a new expense
-      </button>
-    </div>
-    <div class="card">
-      <div class="card-title">Your recent submissions</div>
-      <div id="emp-recent-list"><div class="empty"><div class="empty-sub">No submissions yet</div></div></div>
-    </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" id="emp-tab-submit" onclick="empShowTab('submit')">New expense</button>
+    <button class="nav-tab" id="emp-tab-history" onclick="empShowTab('history')">Payment history</button>
   </div>
 
-  <!-- Employee Submit Form -->
-  <div id="emp-submit" style="display:none;">
+  <div id="emp-pane-submit">
     <div class="page">
-
       <div class="card">
         <div class="card-title">Receipt photos</div>
         <div class="photo-strip" id="photo-strip">
           <div class="add-photo-btn" onclick="document.getElementById('cam-input').click()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             Add photo
           </div>
         </div>
@@ -478,32 +190,14 @@
           Read receipt with AI
         </button>
       </div>
-
-      <div id="ai-status" class="ai-status">
-        <div class="spinner"></div>
-        <span id="ai-status-text">Reading your receipt...</span>
-      </div>
-
+      <div id="ai-status" class="ai-status"><div class="spinner"></div><span id="ai-status-text">Reading your receipt...</span></div>
       <div class="card">
         <div class="card-title">Expense details</div>
-        <div class="field">
-          <label>Description</label>
-          <input type="text" id="f-desc" placeholder="e.g. Home Depot, Gas, Tolls">
-        </div>
-        <div class="field">
-          <label>Amount ($)</label>
-          <input type="number" id="f-amount" placeholder="0.00" step="0.01" inputmode="decimal">
-        </div>
-        <div class="field">
-          <label>Date</label>
-          <input type="date" id="f-date">
-        </div>
-        <div class="field">
-          <label>Notes (optional)</label>
-          <textarea id="f-notes" placeholder="Any extra detail..."></textarea>
-        </div>
+        <div class="field"><label>Description</label><input type="text" id="f-desc" placeholder="e.g. Home Depot, Gas, Tolls"></div>
+        <div class="field"><label>Amount ($)</label><input type="number" id="f-amount" placeholder="0.00" step="0.01" inputmode="decimal"></div>
+        <div class="field"><label>Date</label><input type="date" id="f-date"></div>
+        <div class="field"><label>Notes (optional)</label><textarea id="f-notes" placeholder="Any extra detail..."></textarea></div>
       </div>
-
       <button class="btn btn-success" onclick="submitExpense()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
         Submit expense
@@ -511,57 +205,99 @@
       <div style="height:24px;"></div>
     </div>
   </div>
+
+  <div id="emp-pane-history" style="display:none;">
+    <div class="page">
+      <div class="section-label">Payment batches</div>
+      <div id="emp-batch-list"></div>
+    </div>
+  </div>
 </div>
 
-<!-- Admin App -->
+<!-- Admin -->
 <div id="screen-admin" class="screen">
   <div class="app-header">
-    <div class="app-header-left">
-      <div class="app-title">Admin dashboard</div>
-    </div>
+    <div class="app-header-left"><div class="app-title">Admin dashboard</div></div>
     <button class="logout-btn" onclick="logout()">Sign out</button>
   </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" id="adm-tab-unpaid" onclick="admShowTab('unpaid')">Unpaid</button>
+    <button class="nav-tab" id="adm-tab-history" onclick="admShowTab('history')">History</button>
+    <button class="nav-tab" id="adm-tab-recurring" onclick="admShowTab('recurring')">Recurring</button>
+  </div>
 
-  <div class="page">
-    <div class="summary-bar">
-      <div class="summary-card">
-        <div class="summary-label">Unpaid</div>
-        <div class="summary-value danger" id="admin-unpaid-total">$0.00</div>
+  <div id="adm-pane-unpaid">
+    <div class="page">
+      <div class="summary-bar">
+        <div class="summary-card"><div class="summary-label">Unpaid</div><div class="summary-value danger" id="admin-unpaid-total">$0.00</div></div>
+        <div class="summary-card"><div class="summary-label">Paid all time</div><div class="summary-value success" id="admin-paid-total">$0.00</div></div>
       </div>
-      <div class="summary-card">
-        <div class="summary-label">Paid (all time)</div>
-        <div class="summary-value success" id="admin-paid-total">$0.00</div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="payAllAdmin()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          Pay all &amp; report
+        </button>
+        <button class="btn btn-outline" style="flex:1;" onclick="loadAdmin()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Refresh
+        </button>
       </div>
+      <div class="section-label">Unpaid expenses</div>
+      <div id="admin-expense-list"></div>
     </div>
+  </div>
 
-    <div style="display:flex; gap:10px; margin-bottom:16px;">
-      <button class="btn btn-primary" style="flex:1;" onclick="payAllAdmin()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-        Pay all &amp; report
-      </button>
-      <button class="btn btn-outline" style="flex:1;" onclick="loadAdmin()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-        Refresh
-      </button>
+  <div id="adm-pane-history" style="display:none;">
+    <div class="page">
+      <div class="section-label">Payment batches</div>
+      <div id="admin-batch-list"></div>
     </div>
+  </div>
 
-    <div class="section-label">Unpaid expenses</div>
-    <div id="admin-expense-list">
-      <div class="empty">
-        <div class="empty-icon">&#9997;</div>
-        <div class="empty-title">All caught up</div>
-        <div class="empty-sub">No unpaid expenses</div>
+  <div id="adm-pane-recurring" style="display:none;">
+    <div class="page">
+      <div class="card">
+        <div class="card-title">Monthly recurring expenses</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">These are added automatically on the 1st of each month. Edit the list below and save.</p>
+        <div id="recurring-list"></div>
+        <button class="btn btn-outline" onclick="addRecurringRow()" style="margin-top:10px;">+ Add item</button>
       </div>
+      <button class="btn btn-primary" onclick="saveRecurring()">Save recurring expenses</button>
+      <div style="height:12px;"></div>
+      <button class="btn btn-outline" onclick="runRecurringNow()">Add this month's recurring now</button>
+      <div style="height:24px;"></div>
     </div>
   </div>
 </div>
 
-<!-- Receipt Modal -->
-<div class="modal-overlay" id="receipt-modal" onclick="closeReceiptModal(event)">
+<!-- Expense detail modal -->
+<div class="modal-overlay" id="expense-modal" onclick="closeModalClick(event,'expense-modal')">
+  <div class="modal-inner">
+    <div class="modal-header">
+      <div class="modal-title" id="expense-modal-title">Expense detail</div>
+      <button class="modal-close" onclick="closeModal('expense-modal')">&#215;</button>
+    </div>
+    <div id="expense-modal-body"></div>
+  </div>
+</div>
+
+<!-- Batch detail modal -->
+<div class="modal-overlay" id="batch-modal" onclick="closeModalClick(event,'batch-modal')">
+  <div class="modal-inner">
+    <div class="modal-header">
+      <div class="modal-title" id="batch-modal-title">Payment batch</div>
+      <button class="modal-close" onclick="closeModal('batch-modal')">&#215;</button>
+    </div>
+    <div id="batch-modal-body"></div>
+  </div>
+</div>
+
+<!-- Receipt image modal -->
+<div class="modal-overlay" id="receipt-modal" onclick="closeModalClick(event,'receipt-modal')">
   <div class="modal-inner">
     <div class="modal-header">
       <div class="modal-title">Receipt photos</div>
-      <button class="modal-close" onclick="closeModal()">&#215;</button>
+      <button class="modal-close" onclick="closeModal('receipt-modal')">&#215;</button>
     </div>
     <div class="modal-imgs" id="modal-imgs"></div>
   </div>
@@ -572,450 +308,362 @@
 <script>
 const EMPLOYEE_PIN = "1234";
 const ADMIN_PIN    = "9999";
+const WORKER_URL   = "https://expenses-proxy.yschapiro.workers.dev";
 const COMPANY      = "Ever Ready First Aid & Medical Supply";
-const ADDRESS      = "300 Liberty Ave • Brooklyn, NY 11207 • 718.257.6400 • fax 718.257.6401";
+const ADDRESS      = "300 Liberty Ave \u2022 Brooklyn, NY 11207 \u2022 718.257.6400 \u2022 fax 718.257.6401";
 
 let currentPin = "";
 let currentRole = null;
 let capturedPhotos = [];
 let allExpenses = [];
+let allBatches  = [];
+let allRecurring = [];
 
-async function loadExpenses() {
-  try {
-    const r = localStorage.getItem("expenses");
-    allExpenses = r ? JSON.parse(r) : [];
-  } catch(e) { allExpenses = []; }
+// ── Storage ───────────────────────────────────────────────────
+async function loadAll() {
+  try { allExpenses  = JSON.parse(localStorage.getItem("expenses")  || "[]"); } catch(e){ allExpenses=[]; }
+  try { allBatches   = JSON.parse(localStorage.getItem("batches")   || "[]"); } catch(e){ allBatches=[]; }
+  try { allRecurring = JSON.parse(localStorage.getItem("recurring") || "[]"); } catch(e){ allRecurring=[]; }
+}
+async function saveAll() {
+  localStorage.setItem("expenses",  JSON.stringify(allExpenses));
+  localStorage.setItem("batches",   JSON.stringify(allBatches));
+  localStorage.setItem("recurring", JSON.stringify(allRecurring));
 }
 
-async function saveExpenses() {
-  try {
-    localStorage.setItem("expenses", JSON.stringify(allExpenses));
-  } catch(e) {
-    console.error("Save failed:", e);
+// ── Utils ─────────────────────────────────────────────────────
+function fmt(n){ return "$"+parseFloat(n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,","); }
+function today(){ return new Date().toISOString().split("T")[0]; }
+function fmtDate(d){
+  if(!d) return "";
+  const p=d.split("-");
+  return p.length===3 ? p[1]+"/"+p[2]+"/"+p[0].slice(2) : d;
+}
+function showToast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2500); }
+function showScreen(id){ document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active")); document.getElementById(id).classList.add("active"); }
+function closeModal(id){ document.getElementById(id).classList.remove("open"); }
+function closeModalClick(e,id){ if(e.target===document.getElementById(id)) closeModal(id); }
+function logout(){ currentRole=null; currentPin=""; updateDots(); showScreen("screen-pin"); }
+
+// ── PIN ───────────────────────────────────────────────────────
+function updateDots(){
+  for(let i=0;i<4;i++){
+    const d=document.getElementById("d"+i);
+    d.className="pin-dot"+(i<currentPin.length?" filled":"");
   }
 }
-
-function fmt(n) {
-  return "$" + parseFloat(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+function pinKey(k){ if(!k||currentPin.length>=4) return; currentPin+=k; updateDots(); if(currentPin.length===4) setTimeout(checkPin,150); }
+function pinDel(){ currentPin=currentPin.slice(0,-1); updateDots(); }
+async function checkPin(){
+  await loadAll();
+  if(currentPin===EMPLOYEE_PIN){ currentRole="employee"; showScreen("screen-employee"); empShowTab("submit"); resetSubmitForm(); }
+  else if(currentPin===ADMIN_PIN){ currentRole="admin"; showScreen("screen-admin"); admShowTab("unpaid"); loadAdmin(); }
+  else{ for(let i=0;i<4;i++) document.getElementById("d"+i).className="pin-dot error"; setTimeout(()=>{ currentPin=""; updateDots(); },700); }
 }
 
-function today() {
-  return new Date().toISOString().split("T")[0];
+// ── Employee tabs ─────────────────────────────────────────────
+function empShowTab(tab){
+  ["submit","history"].forEach(t=>{
+    document.getElementById("emp-pane-"+t).style.display = t===tab?"block":"none";
+    document.getElementById("emp-tab-"+t).classList.toggle("active", t===tab);
+  });
+  if(tab==="history") renderBatchList("emp-batch-list");
 }
 
-function fmtDate(d) {
-  if (!d) return "";
-  const parts = d.split("-");
-  if (parts.length === 3) return parts[1] + "/" + parts[2] + "/" + parts[0].slice(2);
-  return d;
-}
-
-function showToast(msg, duration) {
-  const t = document.getElementById("toast");
-  t.textContent = msg;
-  t.classList.add("show");
-  setTimeout(() => t.classList.remove("show"), duration || 2500);
-}
-
-function showScreen(id) {
-  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
-}
-
-function logout() {
-  currentRole = null;
-  currentPin = "";
-  updateDots();
-  showScreen("screen-pin");
-  document.getElementById("pin-hint").style.display = "block";
-}
-
-// ── PIN ────────────────────────────────────────────────────────
-function updateDots() {
-  for (let i = 0; i < 4; i++) {
-    const d = document.getElementById("d" + i);
-    d.className = "pin-dot" + (i < currentPin.length ? " filled" : "");
-  }
-}
-
-function pinKey(k) {
-  if (!k || currentPin.length >= 4) return;
-  currentPin += k;
-  updateDots();
-  if (currentPin.length === 4) setTimeout(checkPin, 150);
-}
-
-function pinDel() {
-  currentPin = currentPin.slice(0, -1);
-  updateDots();
-}
-
-function checkPin() {
-  if (currentPin === EMPLOYEE_PIN) {
-    currentRole = "employee";
-    showScreen("screen-employee");
-    resetSubmitForm();
-  } else if (currentPin === ADMIN_PIN) {
-    currentRole = "admin";
-    showScreen("screen-admin");
-    loadAdmin();
-  } else {
-    for (let i = 0; i < 4; i++) document.getElementById("d" + i).className = "pin-dot error";
-    setTimeout(() => { currentPin = ""; updateDots(); }, 700);
-  }
-}
-
-// ── Employee ───────────────────────────────────────────────────
-function showEmpHome() {
-  document.getElementById("emp-home").style.display = "block";
-  document.getElementById("emp-submit").style.display = "none";
-  // no back button on employee screen
-  document.getElementById("emp-header-title").textContent = "Submit expense";
-  renderEmpRecent();
-}
-
-async function renderEmpRecent() {
-  await loadExpenses();
-  const list = document.getElementById("emp-recent-list");
-  const mine = allExpenses.slice().reverse().slice(0, 5);
-  if (!mine.length) {
-    list.innerHTML = '<div class="empty"><div class="empty-sub">No submissions yet</div></div>';
-    return;
-  }
-  list.innerHTML = mine.map(e => `
-    <div class="expense-row">
-      <div>
-        <div class="expense-desc">${e.description}</div>
-        <div class="expense-meta">${fmtDate(e.date)}</div>
-      </div>
-      <div style="text-align:right;">
-        <div class="expense-amount">${fmt(e.amount)}</div>
-        <div style="margin-top:4px;"><span class="pill pill-${e.status}">${e.status}</span></div>
-      </div>
-    </div>`).join("");
-}
-
-function showEmpSubmit() {
-  resetSubmitForm();
-}
-
-function resetSubmitForm() {
-  document.getElementById("emp-home").style.display = "none";
-  document.getElementById("emp-submit").style.display = "block";
-  // no back button on employee screen
-  document.getElementById("emp-header-title").textContent = "Add expense";
-  capturedPhotos = [];
+// ── Submit form ───────────────────────────────────────────────
+function resetSubmitForm(){
+  capturedPhotos=[];
   renderPhotoStrip();
-  document.getElementById("f-desc").value = "";
-  document.getElementById("f-amount").value = "";
-  document.getElementById("f-date").value = today();
-  document.getElementById("f-notes").value = "";
-  document.getElementById("ai-extract-btn").disabled = true;
+  document.getElementById("f-desc").value="";
+  document.getElementById("f-amount").value="";
+  document.getElementById("f-date").value=today();
+  document.getElementById("f-notes").value="";
+  document.getElementById("ai-extract-btn").disabled=true;
   document.getElementById("ai-status").classList.remove("visible");
 }
 
-function empBack() {
-  showEmpHome();
-}
-
-function handlePhotos(e) {
-  const files = Array.from(e.target.files);
-  files.forEach(file => {
-    const reader = new FileReader();
-    reader.onload = ev => {
-      capturedPhotos.push(ev.target.result);
-      renderPhotoStrip();
-      document.getElementById("ai-extract-btn").disabled = false;
-    };
+function handlePhotos(e){
+  Array.from(e.target.files).forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{ capturedPhotos.push(ev.target.result); renderPhotoStrip(); document.getElementById("ai-extract-btn").disabled=false; };
     reader.readAsDataURL(file);
   });
-  e.target.value = "";
+  e.target.value="";
 }
 
-function renderPhotoStrip() {
-  const strip = document.getElementById("photo-strip");
-  let html = capturedPhotos.map((src, i) => `
-    <div class="photo-thumb-wrap">
-      <img src="${src}" alt="receipt">
-      <button class="photo-remove" onclick="removePhoto(${i})">&#215;</button>
-    </div>`).join("");
-  html += `<div class="add-photo-btn" onclick="document.getElementById('cam-input').click()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-      <circle cx="12" cy="13" r="4"/>
-    </svg>
-    Add photo
-  </div>`;
-  strip.innerHTML = html;
+function renderPhotoStrip(){
+  const strip=document.getElementById("photo-strip");
+  let html=capturedPhotos.map((src,i)=>`<div class="photo-thumb-wrap"><img src="${src}" alt="receipt"><button class="photo-remove" onclick="removePhoto(${i})">&#215;</button></div>`).join("");
+  html+=`<div class="add-photo-btn" onclick="document.getElementById('cam-input').click()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Add photo</div>`;
+  strip.innerHTML=html;
 }
+function removePhoto(i){ capturedPhotos.splice(i,1); renderPhotoStrip(); document.getElementById("ai-extract-btn").disabled=capturedPhotos.length===0; }
 
-function removePhoto(i) {
-  capturedPhotos.splice(i, 1);
-  renderPhotoStrip();
-  document.getElementById("ai-extract-btn").disabled = capturedPhotos.length === 0;
-}
-
-async function runOCR() {
-  if (!capturedPhotos.length) return;
-  const statusEl = document.getElementById("ai-status");
-  const statusTxt = document.getElementById("ai-status-text");
+async function runOCR(){
+  if(!capturedPhotos.length) return;
+  const statusEl=document.getElementById("ai-status");
+  const statusTxt=document.getElementById("ai-status-text");
   statusEl.classList.add("visible");
-  statusTxt.textContent = "Reading your receipt...";
-  document.getElementById("ai-extract-btn").disabled = true;
-
-  try {
-    const content = [
-      {
-        type: "text",
-        text: "Look at these receipt image(s). Extract: 1) vendor/store name or description, 2) total amount paid, 3) date. Reply ONLY with JSON: {\"description\": \"...\", \"amount\": 0.00, \"date\": \"YYYY-MM-DD\"}. If you cannot find a value leave it as empty string or 0."
-      },
-      ...capturedPhotos.map(src => ({
-        type: "image",
-        source: { type: "base64", media_type: src.split(";")[0].split(":")[1], data: src.split(",")[1] }
-      }))
+  statusTxt.textContent="Reading your receipt...";
+  document.getElementById("ai-extract-btn").disabled=true;
+  try{
+    const content=[
+      {type:"text",text:"Look at these receipt image(s). Extract: 1) vendor/store name or description, 2) total amount paid, 3) date. Reply ONLY with JSON: {\"description\": \"...\", \"amount\": 0.00, \"date\": \"YYYY-MM-DD\"}. If you cannot find a value leave it empty or 0."},
+      ...capturedPhotos.map(src=>({type:"image",source:{type:"base64",media_type:src.split(";")[0].split(":")[1],data:src.split(",")[1]}}))
     ];
-
-    let resp, data;
-    try {
-      resp = await fetch("https://expenses-proxy.yschapiro.workers.dev", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 200,
-          messages: [{ role: "user", content }]
-        })
-      });
-      if (!resp.ok) {
-        const errText = await resp.text();
-        throw new Error("Worker returned " + resp.status + ": " + errText);
-      }
-      data = await resp.json();
-    } catch(fetchErr) {
-      throw new Error("Fetch failed: " + fetchErr.message);
-    }
-    const text = data.content && data.content[0] ? data.content[0].text : "";
-    const cleaned = text.replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(cleaned);
-
-    if (parsed.description) document.getElementById("f-desc").value = parsed.description.toUpperCase();
-    if (parsed.amount)      document.getElementById("f-amount").value = parseFloat(parsed.amount).toFixed(2);
-    if (parsed.date)        document.getElementById("f-date").value = parsed.date;
-
-    statusTxt.textContent = "Done! Check the fields below and correct anything.";
-    setTimeout(() => statusEl.classList.remove("visible"), 3000);
-    showToast("Receipt read — please review the details");
-  } catch(err) {
-    statusTxt.textContent = "Could not read receipt automatically. Please fill in manually.";
-    setTimeout(() => statusEl.classList.remove("visible"), 3000);
+    const resp=await fetch(WORKER_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:200,messages:[{role:"user",content}]})});
+    const data=await resp.json();
+    const text=data.content&&data.content[0]?data.content[0].text:"";
+    const parsed=JSON.parse(text.replace(/```json|```/g,"").trim());
+    if(parsed.description) document.getElementById("f-desc").value=parsed.description.toUpperCase();
+    if(parsed.amount)      document.getElementById("f-amount").value=parseFloat(parsed.amount).toFixed(2);
+    if(parsed.date)        document.getElementById("f-date").value=parsed.date;
+    statusTxt.textContent="Done! Review the details below.";
+    setTimeout(()=>statusEl.classList.remove("visible"),3000);
+  }catch(err){
+    statusTxt.textContent="Could not read receipt — please fill in manually.";
+    setTimeout(()=>statusEl.classList.remove("visible"),3000);
   }
-  document.getElementById("ai-extract-btn").disabled = false;
+  document.getElementById("ai-extract-btn").disabled=false;
 }
 
-async function submitExpense() {
-  const desc   = document.getElementById("f-desc").value.trim();
-  const amount = parseFloat(document.getElementById("f-amount").value);
-  const date   = document.getElementById("f-date").value;
-  const notes  = document.getElementById("f-notes").value.trim();
-
-  if (!desc)         { alert("Please enter a description"); return; }
-  if (!amount || amount <= 0) { alert("Please enter a valid amount"); return; }
-  if (!date)         { alert("Please enter a date"); return; }
-
-  await loadExpenses();
-  const expense = {
-    id:          Date.now().toString(),
-    description: desc.toUpperCase(),
-    amount:      amount,
-    date:        date,
-    notes:       notes,
-    photos:      capturedPhotos.slice(),
-    status:      "unpaid",
-    submittedAt: new Date().toISOString(),
-    paidOn:      null
-  };
-  allExpenses.push(expense);
-  await saveExpenses();
-
-  showToast("Submitted! Add another or close the app.");
+async function submitExpense(){
+  const desc=document.getElementById("f-desc").value.trim();
+  const amount=parseFloat(document.getElementById("f-amount").value);
+  const date=document.getElementById("f-date").value;
+  const notes=document.getElementById("f-notes").value.trim();
+  if(!desc){ alert("Please enter a description"); return; }
+  if(!amount||amount<=0){ alert("Please enter a valid amount"); return; }
+  if(!date){ alert("Please enter a date"); return; }
+  await loadAll();
+  allExpenses.push({id:Date.now().toString(),description:desc.toUpperCase(),amount,date,notes,photos:capturedPhotos.slice(),status:"unpaid",submittedAt:new Date().toISOString(),paidOn:null,batchId:null});
+  await saveAll();
+  showToast("Submitted!");
   resetSubmitForm();
 }
 
-// ── Admin ──────────────────────────────────────────────────────
-async function loadAdmin() {
-  await loadExpenses();
-  const unpaid = allExpenses.filter(e => e.status === "unpaid");
-  const paid   = allExpenses.filter(e => e.status === "paid");
-  const unpaidTotal = unpaid.reduce((s, e) => s + e.amount, 0);
-  const paidTotal   = paid.reduce((s, e)   => s + e.amount, 0);
+// ── Expense detail modal ──────────────────────────────────────
+function showExpenseDetail(id){
+  const e=allExpenses.find(x=>x.id===id);
+  if(!e) return;
+  document.getElementById("expense-modal-title").textContent=e.description;
+  let html=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div><div style="font-size:12px;color:var(--muted);margin-bottom:2px;">Amount</div><div style="font-size:20px;font-weight:500;">${fmt(e.amount)}</div></div>
+      <div><div style="font-size:12px;color:var(--muted);margin-bottom:2px;">Date</div><div style="font-size:16px;">${fmtDate(e.date)}</div></div>
+    </div>
+    <div style="margin-bottom:10px;"><span class="pill pill-${e.status}">${e.status}</span>${e.status==="paid"?` <span style="font-size:13px;color:var(--muted);">Paid ${fmtDate(e.paidOn)}</span>`:""}</div>
+    ${e.notes?`<div style="font-size:13px;color:var(--muted);margin-bottom:12px;">${e.notes}</div>`:""}
+    ${e.photos&&e.photos.length?`<div style="font-size:13px;font-weight:500;margin-bottom:8px;">Receipt photos (${e.photos.length})</div><div class="modal-imgs">${e.photos.map(src=>`<img src="${src}" alt="receipt">`).join("")}</div>`:"<div style='font-size:13px;color:var(--muted);'>No receipt photos</div>"}
+  `;
+  document.getElementById("expense-modal-body").innerHTML=html;
+  document.getElementById("expense-modal").classList.add("open");
+}
 
-  document.getElementById("admin-unpaid-total").textContent = fmt(unpaidTotal);
-  document.getElementById("admin-paid-total").textContent   = fmt(paidTotal);
-
-  const list = document.getElementById("admin-expense-list");
-  if (!unpaid.length) {
-    list.innerHTML = `<div class="empty">
-      <div class="empty-icon">&#10003;</div>
-      <div class="empty-title">All caught up</div>
-      <div class="empty-sub">No unpaid expenses</div>
-    </div>`;
+// ── Batch list ────────────────────────────────────────────────
+function renderBatchList(containerId){
+  const container=document.getElementById(containerId);
+  if(!allBatches.length){
+    container.innerHTML=`<div class="empty"><div class="empty-icon">&#128196;</div><div class="empty-title">No payments yet</div></div>`;
     return;
   }
-
-  list.innerHTML = unpaid.slice().reverse().map(e => `
-    <div class="card" style="margin-bottom:10px;">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+  const sorted=[...allBatches].reverse();
+  container.innerHTML=sorted.map(b=>`
+    <div class="batch-card" onclick="showBatchDetail('${b.id}')">
+      <div class="batch-header">
         <div>
-          <div style="font-weight:500; font-size:16px;">${e.description}</div>
-          <div style="font-size:13px; color:var(--text-muted);">${fmtDate(e.date)}${e.notes ? " · " + e.notes : ""}</div>
+          <div class="batch-date">Paid ${fmtDate(b.date)}</div>
+          <div class="batch-meta">${b.expenseIds.length} expense${b.expenseIds.length!==1?"s":""} ${b.checkNumber?"&nbsp;·&nbsp; Check #"+b.checkNumber:""}</div>
         </div>
-        <div style="font-size:19px; font-weight:500; color:var(--danger);">${fmt(e.amount)}</div>
-      </div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        ${e.photos && e.photos.length ? `<button class="btn btn-outline btn-sm" onclick="viewReceipts('${e.id}')">View receipt (${e.photos.length})</button>` : ""}
-        <button class="btn btn-success btn-sm" onclick="markPaid('${e.id}')">Mark paid</button>
-        <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger);" onclick="deleteExpense('${e.id}')">Delete</button>
+        <div class="batch-amount">${fmt(b.total)}</div>
       </div>
     </div>`).join("");
 }
 
-async function markPaid(id) {
-  await loadExpenses();
-  const e = allExpenses.find(x => x.id === id);
-  if (!e) return;
-  e.status = "paid";
-  e.paidOn = new Date().toISOString().split("T")[0];
-  await saveExpenses();
-  showToast("Marked as paid");
-  loadAdmin();
+function showBatchDetail(batchId){
+  const batch=allBatches.find(b=>b.id===batchId);
+  if(!batch) return;
+  const expenses=allExpenses.filter(e=>batch.expenseIds.includes(e.id));
+  document.getElementById("batch-modal-title").textContent="Paid "+fmtDate(batch.date);
+  let html=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+    <div><div style="font-size:13px;color:var(--muted);">${expenses.length} expenses${batch.checkNumber?" · Check #"+batch.checkNumber:""}</div></div>
+    <div style="font-size:20px;font-weight:500;color:var(--success);">${fmt(batch.total)}</div>
+  </div>`;
+  html+=expenses.map(e=>`
+    <div class="expense-row" onclick="closeModal('batch-modal');setTimeout(()=>showExpenseDetail('${e.id}'),200)" style="cursor:pointer;">
+      <div><div class="expense-desc">${e.description}</div><div class="expense-meta">${fmtDate(e.date)}${e.notes?" · "+e.notes:""}</div></div>
+      <div class="expense-amount">${fmt(e.amount)}</div>
+    </div>`).join("");
+  document.getElementById("batch-modal-body").innerHTML=html;
+  document.getElementById("batch-modal").classList.add("open");
 }
 
-async function deleteExpense(id) {
-  if (!confirm("Delete this expense?")) return;
-  await loadExpenses();
-  allExpenses = allExpenses.filter(x => x.id !== id);
-  await saveExpenses();
-  showToast("Deleted");
-  loadAdmin();
+// ── Admin ─────────────────────────────────────────────────────
+function admShowTab(tab){
+  ["unpaid","history","recurring"].forEach(t=>{
+    document.getElementById("adm-pane-"+t).style.display=t===tab?"block":"none";
+    document.getElementById("adm-tab-"+t).classList.toggle("active",t===tab);
+  });
+  if(tab==="history"){ loadAll().then(()=>renderBatchList("admin-batch-list")); }
+  if(tab==="recurring"){ loadAll().then(()=>renderRecurringEditor()); }
 }
 
-async function payAllAdmin() {
-  await loadExpenses();
-  const unpaid = allExpenses.filter(e => e.status === "unpaid");
-  if (!unpaid.length) { showToast("No unpaid expenses"); return; }
-
-  const checkNum = prompt("Enter check number (or leave blank):");
-  if (checkNum === null) return;
-
-  const todayStr = new Date().toISOString().split("T")[0];
-  unpaid.forEach(e => { e.status = "paid"; e.paidOn = todayStr; e.checkNumber = checkNum; });
-  await saveExpenses();
-
-  generatePDFReport(unpaid, checkNum, todayStr);
-  loadAdmin();
-  showToast(unpaid.length + " expenses marked paid");
+async function loadAdmin(){
+  await loadAll();
+  const unpaid=allExpenses.filter(e=>e.status==="unpaid");
+  const paid=allExpenses.filter(e=>e.status==="paid");
+  document.getElementById("admin-unpaid-total").textContent=fmt(unpaid.reduce((s,e)=>s+e.amount,0));
+  document.getElementById("admin-paid-total").textContent=fmt(paid.reduce((s,e)=>s+e.amount,0));
+  const list=document.getElementById("admin-expense-list");
+  if(!unpaid.length){
+    list.innerHTML=`<div class="empty"><div class="empty-icon">&#10003;</div><div class="empty-title">All caught up</div></div>`;
+    return;
+  }
+  list.innerHTML=[...unpaid].reverse().map(e=>`
+    <div class="card clickable" onclick="showExpenseDetail('${e.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+        <div><div style="font-weight:500;font-size:16px;">${e.description}</div>
+        <div style="font-size:13px;color:var(--muted);">${fmtDate(e.date)}${e.notes?" · "+e.notes:""}${e.status==="recurring"?" · <span class=\'pill pill-recurring\'>recurring</span>":""}</div></div>
+        <div style="font-size:19px;font-weight:500;color:var(--danger);">${fmt(e.amount)}</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${e.photos&&e.photos.length?`<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();showExpenseDetail('${e.id}')">View receipt (${e.photos.length})</button>`:""}
+        <button class="btn btn-success btn-sm" onclick="event.stopPropagation();markPaid('${e.id}')">Mark paid</button>
+        <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger);" onclick="event.stopPropagation();deleteExpense('${e.id}')">Delete</button>
+      </div>
+    </div>`).join("");
 }
 
-// ── PDF Report ─────────────────────────────────────────────────
-function generatePDFReport(paidExpenses, checkNum, dateStr) {
-  const total    = paidExpenses.reduce((s, e) => s + e.amount, 0);
-  const fmtD     = d => d ? (d.split("-")[1] + "/" + d.split("-")[2] + "/" + d.split("-")[0].slice(2)) : "";
-  const checkDisplay = checkNum || "___________________________";
-  const employeeName = "ROBERT MELONGE";
+async function markPaid(id){
+  await loadAll();
+  const e=allExpenses.find(x=>x.id===id);
+  if(!e) return;
+  e.status="paid"; e.paidOn=today();
+  await saveAll(); showToast("Marked as paid"); loadAdmin();
+}
 
-  const rows = paidExpenses.map(e =>
-    `<tr><td>${e.description}</td><td class="c">${fmtD(e.date)}</td><td class="r">${fmt(e.amount)}</td></tr>`
-  ).join("");
+async function deleteExpense(id){
+  if(!confirm("Delete this expense?")) return;
+  await loadAll();
+  allExpenses=allExpenses.filter(x=>x.id!==id);
+  await saveAll(); showToast("Deleted"); loadAdmin();
+}
 
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+async function payAllAdmin(){
+  await loadAll();
+  const unpaid=allExpenses.filter(e=>e.status==="unpaid");
+  if(!unpaid.length){ showToast("No unpaid expenses"); return; }
+  const checkNum=prompt("Enter check number (or leave blank):");
+  if(checkNum===null) return;
+  const todayStr=today();
+  const batchId=Date.now().toString();
+  const total=unpaid.reduce((s,e)=>s+e.amount,0);
+  unpaid.forEach(e=>{ e.status="paid"; e.paidOn=todayStr; e.checkNumber=checkNum; e.batchId=batchId; });
+  allBatches.push({id:batchId,date:todayStr,checkNumber:checkNum,expenseIds:unpaid.map(e=>e.id),total});
+  await saveAll();
+  generatePDFReport(unpaid,checkNum,todayStr);
+  loadAdmin();
+  showToast(unpaid.length+" expenses marked paid");
+}
+
+// ── Recurring ─────────────────────────────────────────────────
+function renderRecurringEditor(){
+  const list=document.getElementById("recurring-list");
+  if(!allRecurring.length){
+    list.innerHTML=`<div style="font-size:13px;color:var(--muted);margin-bottom:8px;">No recurring expenses yet. Add one below.</div>`;
+    return;
+  }
+  list.innerHTML=allRecurring.map((r,i)=>`
+    <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
+      <input type="text" value="${r.description}" placeholder="Description" style="flex:2;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:inherit;" onchange="allRecurring[${i}].description=this.value">
+      <input type="number" value="${r.amount}" placeholder="Amount" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:inherit;" onchange="allRecurring[${i}].amount=parseFloat(this.value)||0">
+      <button onclick="removeRecurring(${i})" style="background:none;border:none;color:var(--danger);font-size:20px;cursor:pointer;padding:4px;">&#215;</button>
+    </div>`).join("");
+}
+
+function addRecurringRow(){
+  allRecurring.push({description:"",amount:0});
+  renderRecurringEditor();
+}
+
+function removeRecurring(i){
+  allRecurring.splice(i,1);
+  renderRecurringEditor();
+}
+
+async function saveRecurring(){
+  await loadAll();
+  await saveAll();
+  showToast("Recurring expenses saved!");
+}
+
+async function runRecurringNow(){
+  await loadAll();
+  if(!allRecurring.length){ alert("No recurring expenses set up yet."); return; }
+  const todayStr=today();
+  allRecurring.forEach(r=>{
+    if(!r.description||!r.amount) return;
+    allExpenses.push({id:Date.now().toString()+"_"+Math.random(),description:r.description.toUpperCase(),amount:r.amount,date:todayStr,notes:"Auto-recurring",photos:[],status:"unpaid",submittedAt:new Date().toISOString(),paidOn:null,batchId:null,isRecurring:true});
+  });
+  await saveAll();
+  admShowTab("unpaid");
+  loadAdmin();
+  showToast(allRecurring.length+" recurring expense(s) added!");
+}
+
+// ── PDF Report ────────────────────────────────────────────────
+function generatePDFReport(paidExpenses,checkNum,dateStr){
+  const total=paidExpenses.reduce((s,e)=>s+e.amount,0);
+  const fmtD=d=>d?(d.split("-")[1]+"/"+d.split("-")[2]+"/"+d.split("-")[0].slice(2)):"";
+  const checkDisplay=checkNum||"___________________________";
+  const rows=paidExpenses.map(e=>`<tr><td>${e.description}</td><td class="c">${fmtD(e.date)}</td><td class="r">${fmt(e.amount)}</td></tr>`).join("");
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8">
 <style>
-  @page { size: letter; margin: 0.65in; }
-  body { font-family: Arial, sans-serif; font-size: 11pt; color: #000; }
-  .company { font-size: 17pt; font-weight: bold; margin-bottom: 2px; }
-  .subtitle { font-size: 13pt; font-weight: bold; margin-bottom: 14px; }
-  hr { border: none; border-top: 2px solid #000; margin: 0 0 14px; }
-  .fields { display: flex; gap: 40px; margin-bottom: 16px; font-size: 11pt; }
-  .fields span { border-bottom: 1px solid #000; min-width: 180px; display: inline-block; padding-bottom: 1px; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-  th { background: #2C3E50; color: #fff; padding: 6px 8px; font-size: 11pt; text-align: left; }
-  th.r, td.r { text-align: right; }
-  th.c, td.c { text-align: center; }
-  td { padding: 5px 8px; font-size: 10pt; border-bottom: 1px solid #ddd; }
-  tr:nth-child(even) td { background: #f5f5f5; }
-  .total-row td { font-weight: bold; font-size: 12pt; border-top: 2px solid #000; background: #D5F5E3; color: #1a6b3c; padding: 6px 8px; }
-  .receipts { font-size: 9pt; font-weight: bold; text-decoration: underline; margin: 10px 0 6px; }
-  .office { border: 1.5px solid #000; padding: 10px 14px; margin-top: 6px; }
-  .office-title { font-weight: bold; font-size: 10pt; margin-bottom: 8px; }
-  .office-line { font-size: 10pt; margin-bottom: 10px; }
-  .footer { font-size: 9pt; font-weight: bold; text-align: center; border-top: 1px solid #000; padding-top: 6px; margin-top: 16px; }
-  .page-break { page-break-before: always; }
+@page{size:letter;margin:.65in}
+body{font-family:Arial,sans-serif;font-size:11pt;color:#000}
+.company{font-size:17pt;font-weight:bold;margin-bottom:2px}
+.subtitle{font-size:13pt;font-weight:bold;margin-bottom:14px}
+hr{border:none;border-top:2px solid #000;margin:0 0 14px}
+.fields{display:flex;gap:40px;margin-bottom:16px;font-size:11pt}
+.fields span{border-bottom:1px solid #000;min-width:180px;display:inline-block;padding-bottom:1px}
+table{width:100%;border-collapse:collapse;margin-bottom:10px}
+th{background:#2C3E50;color:#fff;padding:6px 8px;font-size:11pt;text-align:left}
+th.r,td.r{text-align:right} th.c,td.c{text-align:center}
+td{padding:5px 8px;font-size:10pt;border-bottom:1px solid #ddd}
+tr:nth-child(even) td{background:#f5f5f5}
+.total-row td{font-weight:bold;font-size:12pt;border-top:2px solid #000;background:#D5F5E3;color:#1a6b3c;padding:6px 8px}
+.receipts{font-size:9pt;font-weight:bold;text-decoration:underline;margin:10px 0 6px}
+.office{border:1.5px solid #000;padding:10px 14px;margin-top:6px}
+.office-title{font-weight:bold;font-size:10pt;margin-bottom:8px}
+.office-line{font-size:10pt;margin-bottom:10px}
+.footer{font-size:9pt;font-weight:bold;text-align:center;border-top:1px solid #000;padding-top:6px;margin-top:16px}
+.pb{page-break-before:always}
 </style></head><body>
 <div class="company">${COMPANY}</div>
-<div class="subtitle">Reimbursement Form</div>
-<hr>
-<div class="fields"><div><b>Name:</b> <span>${employeeName}</span></div><div><b>Date:</b> <span>${fmtD(dateStr)}</span></div></div>
-<table>
-  <thead><tr><th>Description</th><th class="r">Amount</th></tr></thead>
-  <tbody><tr><td colspan="2" style="text-align:center;font-style:italic;">SEE ATTACHED SPREADSHEET</td></tr></tbody>
-  <tfoot><tr class="total-row"><td style="text-align:right;font-weight:bold;">Total</td><td class="r">${fmt(total)}</td></tr></tfoot>
-</table>
+<div class="subtitle">Reimbursement Form</div><hr>
+<div class="fields"><div><b>Name:</b> <span>ROBERT MELONGE</span></div><div><b>Date:</b> <span>${fmtD(dateStr)}</span></div></div>
+<table><thead><tr><th>Description</th><th class="r">Amount</th></tr></thead>
+<tbody><tr><td colspan="2" style="text-align:center;font-style:italic;">SEE ATTACHED SPREADSHEET</td></tr></tbody>
+<tfoot><tr class="total-row"><td style="text-align:right;font-weight:bold;">Total</td><td class="r">${fmt(total)}</td></tr></tfoot></table>
 <div class="receipts">ALL FORMS MUST INCLUDE RECEIPTS!!</div>
-<div class="office">
-  <div class="office-title">OFFICE USE ONLY</div>
-  <div class="office-line">Approved by: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
-  <div class="office-line">Date Paid: ${fmtD(dateStr)} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Check Number: ${checkDisplay}</div>
-</div>
+<div class="office"><div class="office-title">OFFICE USE ONLY</div>
+<div class="office-line">Approved by: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
+<div class="office-line">Date Paid: ${fmtD(dateStr)} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Check Number: ${checkDisplay}</div></div>
 <div class="footer">${ADDRESS}</div>
-
-<div class="page-break"></div>
-<div class="company">${COMPANY}</div>
-<div class="subtitle">Expense Detail</div>
-<hr>
-<div class="fields" style="font-size:10pt;">
-  <div><b>Employee:</b> ${employeeName}</div>
-  <div><b>Date Paid:</b> ${fmtD(dateStr)}</div>
-  <div><b>Check #:</b> ${checkDisplay}</div>
-</div>
-<table>
-  <thead><tr><th>Description</th><th class="c">Date</th><th class="r">Amount</th></tr></thead>
-  <tbody>${rows}</tbody>
-  <tfoot><tr class="total-row"><td></td><td class="c">TOTAL</td><td class="r">${fmt(total)}</td></tr></tfoot>
-</table>
+<div class="pb"></div>
+<div class="company">${COMPANY}</div><div class="subtitle">Expense Detail</div><hr>
+<div class="fields" style="font-size:10pt;"><div><b>Employee:</b> ROBERT MELONGE</div><div><b>Date Paid:</b> ${fmtD(dateStr)}</div><div><b>Check #:</b> ${checkDisplay}</div></div>
+<table><thead><tr><th>Description</th><th class="c">Date</th><th class="r">Amount</th></tr></thead>
+<tbody>${rows}</tbody>
+<tfoot><tr class="total-row"><td></td><td class="c">TOTAL</td><td class="r">${fmt(total)}</td></tr></tfoot></table>
 <div class="footer">${ADDRESS}</div>
 </body></html>`;
-
-  const w = window.open("", "_blank");
-  if (w) {
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => w.print(), 800);
-  } else {
-    const blob = new Blob([html], { type: "text/html" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "Reimbursement_" + dateStr + ".html";
-    a.click();
-  }
+  const w=window.open("","_blank");
+  if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),800); }
+  else{ const b=new Blob([html],{type:"text/html"}); const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download="Reimbursement_"+dateStr+".html"; a.click(); }
 }
 
-// ── Receipt modal ──────────────────────────────────────────────
-async function viewReceipts(id) {
-  await loadExpenses();
-  const e = allExpenses.find(x => x.id === id);
-  if (!e || !e.photos || !e.photos.length) return;
-  document.getElementById("modal-imgs").innerHTML =
-    e.photos.map(src => `<img src="${src}" alt="receipt">`).join("");
-  document.getElementById("receipt-modal").classList.add("open");
-}
-
-function closeReceiptModal(evt) {
-  if (evt.target === document.getElementById("receipt-modal")) closeModal();
-}
-function closeModal() {
-  document.getElementById("receipt-modal").classList.remove("open");
-}
-
-loadExpenses();
+loadAll();
 </script>
 </body>
 </html>
