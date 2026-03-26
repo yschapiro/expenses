@@ -392,6 +392,7 @@ function closeModalClick(e,id){ if(e.target===document.getElementById(id)) close
 
 function logout(){
   clearInterval(pollTimer);
+  sessionStorage.removeItem("role");
   currentRole=null; currentPin=""; updateDots();
   showScreen("screen-pin");
 }
@@ -410,11 +411,13 @@ async function checkPin(){
   await loadAll();
   if(currentPin===EMPLOYEE_PIN){
     currentRole="employee";
+    sessionStorage.setItem("role","employee");
     showScreen("screen-employee");
     empShowTab("submit");
     resetSubmitForm();
   } else if(currentPin===ADMIN_PIN){
     currentRole="admin";
+    sessionStorage.setItem("role","admin");
     showScreen("screen-admin");
     admShowTab("unpaid");
     loadAdmin();
@@ -438,14 +441,21 @@ function empShowTab(tab){
 
 // ── Submit form ───────────────────────────────────────────────
 function resetSubmitForm(){
+  // Dismiss mobile keyboard first
+  document.activeElement && document.activeElement.blur();
   capturedPhotos=[];
-  renderPhotoStrip();
-  document.getElementById("f-desc").value="";
-  document.getElementById("f-amount").value="";
-  document.getElementById("f-date").value=today();
-  document.getElementById("f-notes").value="";
-  document.getElementById("ai-extract-btn").disabled=true;
-  document.getElementById("ai-status").classList.remove("visible");
+  // Small delay to let keyboard dismiss before resetting
+  setTimeout(() => {
+    renderPhotoStrip();
+    document.getElementById("f-desc").value="";
+    document.getElementById("f-amount").value="";
+    document.getElementById("f-date").value=today();
+    document.getElementById("f-notes").value="";
+    document.getElementById("ai-extract-btn").disabled=true;
+    document.getElementById("ai-status").classList.remove("visible");
+    // Scroll back to top
+    window.scrollTo(0,0);
+  }, 100);
 }
 
 function handlePhotos(e){
@@ -768,6 +778,25 @@ tr:nth-child(even) td{background:#f5f5f5}
   if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),800); }
   else{ const b=new Blob([html],{type:"text/html"}); const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download="Reimbursement_"+dateStr+".html"; a.click(); }
 }
+// Restore session on reload (handles mobile background/foreground)
+(async function restoreSession(){
+  const savedRole = sessionStorage.getItem("role");
+  if(savedRole === "employee"){
+    currentRole = "employee";
+    await loadAll();
+    showScreen("screen-employee");
+    empShowTab("submit");
+    resetSubmitForm();
+  } else if(savedRole === "admin"){
+    currentRole = "admin";
+    await loadAll();
+    showScreen("screen-admin");
+    admShowTab("unpaid");
+    loadAdmin();
+    clearInterval(pollTimer);
+    pollTimer = setInterval(()=>{ if(currentRole==="admin") loadAdmin(); }, 10000);
+  }
+})();
 </script>
 </body>
 </html>
