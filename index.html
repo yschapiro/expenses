@@ -675,13 +675,35 @@ function renderRecurringEditor(){
     </div>`).join("");
 }
 
-function addRecurringRow(){ allRecurring.push({description:"",amount:0}); renderRecurringEditor(); }
-function removeRecurring(i){ allRecurring.splice(i,1); renderRecurringEditor(); }
+function syncRecurringFromDOM(){
+  const rows = document.querySelectorAll("#recurring-list > div");
+  rows.forEach((row, i) => {
+    const inputs = row.querySelectorAll("input");
+    if(allRecurring[i]){
+      if(inputs[0]) allRecurring[i].description = inputs[0].value.trim();
+      if(inputs[1]) allRecurring[i].amount = parseFloat(inputs[1].value) || 0;
+    }
+  });
+}
+function addRecurringRow(){ syncRecurringFromDOM(); allRecurring.push({description:"",amount:0}); renderRecurringEditor(); }
+function removeRecurring(i){ syncRecurringFromDOM(); allRecurring.splice(i,1); renderRecurringEditor(); }
 
 async function saveRecurring(){
+  // Collect current values from the DOM inputs before saving
+  const rows = document.querySelectorAll("#recurring-list > div");
+  rows.forEach((row, i) => {
+    const inputs = row.querySelectorAll("input");
+    if(inputs[0]) allRecurring[i].description = inputs[0].value.trim();
+    if(inputs[1]) allRecurring[i].amount = parseFloat(inputs[1].value) || 0;
+  });
+  // Filter out empty rows
+  allRecurring = allRecurring.filter(r => r.description && r.amount > 0);
+  setSyncDot(true);
   await apiSave({ recurring: allRecurring });
   localStorage.setItem("recurring", JSON.stringify(allRecurring));
-  showToast("Saved!");
+  setSyncDot(false);
+  renderRecurringEditor();
+  showToast("Recurring expenses saved!");
 }
 
 async function runRecurringNow(){
