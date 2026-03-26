@@ -766,17 +766,25 @@ async function runOCR() {
       }))
     ];
 
-    const resp = await fetch("https://expenses-api.yschapiro.workers.dev/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 200,
-        messages: [{ role: "user", content }]
-      })
-    });
-
-    const data = await resp.json();
+    let resp, data;
+    try {
+      resp = await fetch("https://expenses-proxy.yschapiro.workers.dev", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 200,
+          messages: [{ role: "user", content }]
+        })
+      });
+      if (!resp.ok) {
+        const errText = await resp.text();
+        throw new Error("Worker returned " + resp.status + ": " + errText);
+      }
+      data = await resp.json();
+    } catch(fetchErr) {
+      throw new Error("Fetch failed: " + fetchErr.message);
+    }
     const text = data.content && data.content[0] ? data.content[0].text : "";
     const cleaned = text.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(cleaned);
