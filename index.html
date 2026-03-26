@@ -433,8 +433,7 @@
 <div id="screen-employee" class="screen">
   <div class="app-header">
     <div class="app-header-left">
-      <button class="back-btn" id="emp-back" onclick="empBack()">&#8592;</button>
-      <div class="app-title" id="emp-header-title">Submit Expense</div>
+      <div class="app-title" id="emp-header-title">Add expense</div>
     </div>
     <button class="logout-btn" onclick="logout()">Sign out</button>
   </div>
@@ -648,8 +647,7 @@ function checkPin() {
   if (currentPin === EMPLOYEE_PIN) {
     currentRole = "employee";
     showScreen("screen-employee");
-    showEmpHome();
-    loadAdmin();
+    resetSubmitForm();
   } else if (currentPin === ADMIN_PIN) {
     currentRole = "admin";
     showScreen("screen-admin");
@@ -691,10 +689,14 @@ async function renderEmpRecent() {
 }
 
 function showEmpSubmit() {
+  resetSubmitForm();
+}
+
+function resetSubmitForm() {
   document.getElementById("emp-home").style.display = "none";
   document.getElementById("emp-submit").style.display = "block";
-  document.getElementById("emp-back").classList.add("visible");
-  document.getElementById("emp-header-title").textContent = "New expense";
+  document.getElementById("emp-back").classList.remove("visible");
+  document.getElementById("emp-header-title").textContent = "Add expense";
   capturedPhotos = [];
   renderPhotoStrip();
   document.getElementById("f-desc").value = "";
@@ -809,9 +811,9 @@ async function submitExpense() {
   const date   = document.getElementById("f-date").value;
   const notes  = document.getElementById("f-notes").value.trim();
 
-  if (!desc)         { showToast("Please enter a description"); return; }
-  if (!amount || amount <= 0) { showToast("Please enter a valid amount"); return; }
-  if (!date)         { showToast("Please enter a date"); return; }
+  if (!desc)         { alert("Please enter a description"); return; }
+  if (!amount || amount <= 0) { alert("Please enter a valid amount"); return; }
+  if (!date)         { alert("Please enter a date"); return; }
 
   await loadExpenses();
   const expense = {
@@ -828,8 +830,8 @@ async function submitExpense() {
   allExpenses.push(expense);
   await saveExpenses();
 
-  showToast("Expense submitted!");
-  showEmpHome();
+  showToast("Submitted! Add another or close the app.");
+  resetSubmitForm();
 }
 
 // ── Admin ──────────────────────────────────────────────────────
