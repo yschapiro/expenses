@@ -579,13 +579,17 @@ let allExpenses = [];
 
 async function loadExpenses() {
   try {
-    const r = await window.storage.get("expenses");
-    allExpenses = r ? JSON.parse(r.value) : [];
+    const r = localStorage.getItem("expenses");
+    allExpenses = r ? JSON.parse(r) : [];
   } catch(e) { allExpenses = []; }
 }
 
 async function saveExpenses() {
-  await window.storage.set("expenses", JSON.stringify(allExpenses));
+  try {
+    localStorage.setItem("expenses", JSON.stringify(allExpenses));
+  } catch(e) {
+    console.error("Save failed:", e);
+  }
 }
 
 function fmt(n) {
@@ -662,7 +666,7 @@ function checkPin() {
 function showEmpHome() {
   document.getElementById("emp-home").style.display = "block";
   document.getElementById("emp-submit").style.display = "none";
-  document.getElementById("emp-back").classList.remove("visible");
+  // no back button on employee screen
   document.getElementById("emp-header-title").textContent = "Submit expense";
   renderEmpRecent();
 }
@@ -695,7 +699,7 @@ function showEmpSubmit() {
 function resetSubmitForm() {
   document.getElementById("emp-home").style.display = "none";
   document.getElementById("emp-submit").style.display = "block";
-  document.getElementById("emp-back").classList.remove("visible");
+  // no back button on employee screen
   document.getElementById("emp-header-title").textContent = "Add expense";
   capturedPhotos = [];
   renderPhotoStrip();
