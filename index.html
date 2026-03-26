@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>Ever Ready — Expenses v4</title>
+<title>Ever Ready — Expenses v5</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -33,9 +33,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .app-header{background:var(--primary);color:white;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
 .app-title{font-size:17px;font-weight:500}
 .logout-btn{background:none;border:1px solid rgba(255,255,255,.4);color:white;font-size:13px;padding:5px 12px;border-radius:20px;cursor:pointer}
-.sync-dot{width:8px;height:8px;border-radius:50%;background:#27ae60;display:inline-block;margin-left:8px}
-.sync-dot.syncing{background:#e67e22;animation:pulse .8s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
 /* Nav tabs */
 .nav-tabs{display:flex;background:var(--primary);border-top:1px solid rgba(255,255,255,.15)}
@@ -119,8 +116,6 @@ input[type="file"]{display:none}
 .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
 .modal-title{font-size:16px;font-weight:500}
 .modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1}
-.modal-imgs{display:flex;flex-direction:column;gap:10px}
-.modal-imgs img{width:100%;border-radius:var(--radius-sm);border:1px solid var(--border)}
 
 /* Batch card */
 .batch-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px;cursor:pointer;transition:border-color .15s}
@@ -172,9 +167,7 @@ input[type="file"]{display:none}
 <!-- Employee -->
 <div id="screen-employee" class="screen">
   <div class="app-header">
-    <div class="app-header-left" style="display:flex;align-items:center;gap:8px;">
-      <div class="app-title">Add expense</div>
-    </div>
+    <div class="app-title">Add expense</div>
     <button class="logout-btn" onclick="logout()">Sign out</button>
   </div>
   <div class="nav-tabs">
@@ -205,7 +198,7 @@ input[type="file"]{display:none}
         <div class="field"><label>Date</label><input type="date" id="f-date"></div>
         <div class="field"><label>Notes (optional)</label><textarea id="f-notes" placeholder="Any extra detail..."></textarea></div>
       </div>
-      <button class="btn btn-success" onclick="submitExpense()">
+      <button class="btn btn-success" id="submit-btn" onclick="submitExpense()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
         Submit expense
       </button>
@@ -223,9 +216,7 @@ input[type="file"]{display:none}
 <!-- Admin -->
 <div id="screen-admin" class="screen">
   <div class="app-header">
-    <div style="display:flex;align-items:center;gap:8px;">
-      <div class="app-title">Admin</div>
-    </div>
+    <div class="app-title">Admin</div>
     <button class="logout-btn" onclick="logout()">Sign out</button>
   </div>
   <div class="nav-tabs">
@@ -293,7 +284,7 @@ input[type="file"]{display:none}
 <div class="modal-overlay" id="pay-modal" onclick="closeModalClick(event,'pay-modal')">
   <div class="modal-inner">
     <div class="modal-header">
-      <div class="modal-title">Review & pay all</div>
+      <div class="modal-title">Review &amp; pay all</div>
       <button class="modal-close" onclick="closeModal('pay-modal')">&#215;</button>
     </div>
     <div id="pay-modal-body"></div>
@@ -327,13 +318,13 @@ const WORKER       = "https://expenses-proxy.yschapiro.workers.dev";
 const COMPANY      = "Ever Ready First Aid & Medical Supply";
 const ADDRESS      = "300 Liberty Ave \u2022 Brooklyn, NY 11207 \u2022 718.257.6400 \u2022 fax 718.257.6401";
 
-let currentPin = "";
-let currentRole = null;
+let currentPin   = "";
+let currentRole  = null;
 let capturedPhotos = [];
-let allExpenses = [];
-let allBatches  = [];
+let allExpenses  = [];
+let allBatches   = [];
 let allRecurring = [];
-let pollTimer = null;
+let pollTimer    = null;
 
 // ── API ───────────────────────────────────────────────────────
 async function apiGet() {
@@ -348,19 +339,49 @@ async function apiSave(payload) {
   });
 }
 
+// Strip photos before sending to KV — photos stay in localStorage only
+function expensesForKV(expenses) {
+  return expenses.map(e => {
+    const { photos, ...rest } = e;
+    return rest;
+  });
+}
+
+// Merge KV expenses with locally stored photos
+function mergePhotos(kvExpenses) {
+  const localPhotos = JSON.parse(localStorage.getItem("expense-photos") || "{}");
+  return kvExpenses.map(e => ({
+    ...e,
+    photos: localPhotos[e.id] || []
+  }));
+}
+
+// Save photos separately to localStorage keyed by expense id
+function savePhotosLocally(id, photos) {
+  const localPhotos = JSON.parse(localStorage.getItem("expense-photos") || "{}");
+  if (photos && photos.length) {
+    localPhotos[id] = photos;
+  }
+  localStorage.setItem("expense-photos", JSON.stringify(localPhotos));
+}
+
 async function loadAll() {
   try {
     const data = await apiGet();
-    allExpenses  = data.expenses  || [];
+    const kvExpenses  = data.expenses  || [];
+    allExpenses  = mergePhotos(kvExpenses);
     allBatches   = data.batches   || [];
     allRecurring = data.recurring || [];
-    // Update local backup
-    localStorage.setItem("expenses",  JSON.stringify(allExpenses));
-    localStorage.setItem("batches",   JSON.stringify(allBatches));
-    localStorage.setItem("recurring", JSON.stringify(allRecurring));
+    // Cache to localStorage as backup
+    localStorage.setItem("expenses-kv",  JSON.stringify(kvExpenses));
+    localStorage.setItem("batches",      JSON.stringify(allBatches));
+    localStorage.setItem("recurring",    JSON.stringify(allRecurring));
   } catch(e) {
     // Fallback to localStorage if offline
-    try { allExpenses  = JSON.parse(localStorage.getItem("expenses")  || "[]"); } catch(x){ allExpenses=[]; }
+    try {
+      const kvExpenses = JSON.parse(localStorage.getItem("expenses-kv") || "[]");
+      allExpenses = mergePhotos(kvExpenses);
+    } catch(x){ allExpenses=[]; }
     try { allBatches   = JSON.parse(localStorage.getItem("batches")   || "[]"); } catch(x){ allBatches=[]; }
     try { allRecurring = JSON.parse(localStorage.getItem("recurring") || "[]"); } catch(x){ allRecurring=[]; }
   }
@@ -368,17 +389,19 @@ async function loadAll() {
 
 async function saveAll() {
   try {
-    await apiSave({ expenses: allExpenses, batches: allBatches, recurring: allRecurring });
-    localStorage.setItem("expenses",  JSON.stringify(allExpenses));
-    localStorage.setItem("batches",   JSON.stringify(allBatches));
-    localStorage.setItem("recurring", JSON.stringify(allRecurring));
+    // Never send photos to KV — strip them before saving
+    await apiSave({
+      expenses:  expensesForKV(allExpenses),
+      batches:   allBatches,
+      recurring: allRecurring
+    });
+    // Keep local KV cache in sync
+    localStorage.setItem("expenses-kv",  JSON.stringify(expensesForKV(allExpenses)));
+    localStorage.setItem("batches",      JSON.stringify(allBatches));
+    localStorage.setItem("recurring",    JSON.stringify(allRecurring));
   } catch(e) {
     showToast("Save failed — check your connection");
   }
-}
-
-function setSyncDot(syncing) {
-  // No-op — removed blinking dot to avoid confusion
 }
 
 // ── Utils ─────────────────────────────────────────────────────
@@ -421,7 +444,6 @@ async function checkPin(){
     showScreen("screen-admin");
     admShowTab("unpaid");
     loadAdmin();
-    // Poll every 10 seconds for new submissions
     clearInterval(pollTimer);
     pollTimer = setInterval(()=>{ if(currentRole==="admin") loadAdmin(); }, 10000);
   } else {
@@ -441,10 +463,8 @@ function empShowTab(tab){
 
 // ── Submit form ───────────────────────────────────────────────
 function resetSubmitForm(){
-  // Dismiss mobile keyboard first
   document.activeElement && document.activeElement.blur();
   capturedPhotos=[];
-  // Small delay to let keyboard dismiss before resetting
   setTimeout(() => {
     renderPhotoStrip();
     document.getElementById("f-desc").value="";
@@ -453,7 +473,9 @@ function resetSubmitForm(){
     document.getElementById("f-notes").value="";
     document.getElementById("ai-extract-btn").disabled=true;
     document.getElementById("ai-status").classList.remove("visible");
-    // Scroll back to top
+    const btn=document.getElementById("submit-btn");
+    btn.disabled=false;
+    btn.innerHTML=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Submit expense`;
     window.scrollTo(0,0);
   }, 100);
 }
@@ -510,17 +532,28 @@ async function submitExpense(){
   if(!desc){ alert("Please enter a description"); return; }
   if(!amount||amount<=0){ alert("Please enter a valid amount"); return; }
   if(!date){ alert("Please enter a date"); return; }
-  setSyncDot(true);
-  await loadAll();
+
+  // Immediate feedback — no waiting
+  const btn=document.getElementById("submit-btn");
+  btn.disabled=true;
+  btn.textContent="Submitting…";
+
+  const id=Date.now().toString();
+
+  // Save photos to localStorage only (never goes to KV)
+  savePhotosLocally(id, capturedPhotos.slice());
+
+  // Append to in-memory array and save to KV (no photos = small payload = fast)
   allExpenses.push({
-    id: Date.now().toString(),
+    id,
     description: desc.toUpperCase(),
     amount, date, notes,
-    photos: capturedPhotos.slice(),
+    photos: capturedPhotos.slice(), // kept in memory for this session
     status: "unpaid",
     submittedAt: new Date().toISOString(),
     paidOn: null, batchId: null
   });
+
   await saveAll();
   showToast("Submitted!");
   resetSubmitForm();
@@ -538,7 +571,7 @@ function showExpenseDetail(id){
     </div>
     <div style="margin-bottom:10px;"><span class="pill pill-${e.status}">${e.status}</span>${e.status==="paid"?` <span style="font-size:13px;color:var(--muted);">Paid ${fmtDate(e.paidOn)}</span>`:""}</div>
     ${e.notes?`<div style="font-size:13px;color:var(--muted);margin-bottom:12px;">${e.notes}</div>`:""}
-    ${e.photos&&e.photos.length?`<div style="font-size:13px;font-weight:500;margin-bottom:8px;">Receipt photos (${e.photos.length})</div><div class="modal-imgs">${e.photos.map(src=>`<img src="${src}">`).join("")}</div>`:`<div style="font-size:13px;color:var(--muted);">No receipt photos</div>`}
+    <div style="font-size:13px;color:var(--muted);">Receipt photos are stored on the submitting device.</div>
   `;
   document.getElementById("expense-modal").classList.add("open");
 }
@@ -611,7 +644,6 @@ async function loadAdmin(){
         <div style="font-size:19px;font-weight:500;color:var(--danger);margin-left:12px;">${fmt(e.amount)}</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        ${e.photos&&e.photos.length?`<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();showExpenseDetail('${e.id}')">Receipt (${e.photos.length})</button>`:""}
         <button class="btn btn-success btn-sm" onclick="event.stopPropagation();markPaid('${e.id}')">Mark paid</button>
         <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger);" onclick="event.stopPropagation();deleteExpense('${e.id}')">Delete</button>
       </div>
@@ -633,13 +665,12 @@ async function deleteExpense(id){
   await saveAll(); showToast("Deleted"); loadAdmin();
 }
 
-// ── Pay all — show preview first ─────────────────────────────
+// ── Pay all ───────────────────────────────────────────────────
 async function payAllAdmin(){
   await loadAll();
   const unpaid=allExpenses.filter(e=>e.status==="unpaid");
   if(!unpaid.length){ showToast("No unpaid expenses"); return; }
   const total=unpaid.reduce((s,e)=>s+e.amount,0);
-
   let html=`<div style="margin-bottom:12px;font-size:13px;color:var(--muted);">${unpaid.length} expense${unpaid.length!==1?"s":""} to be paid</div>`;
   html+=unpaid.map(e=>`
     <div class="pay-preview-row">
@@ -647,7 +678,6 @@ async function payAllAdmin(){
       <div style="font-weight:500;">${fmt(e.amount)}</div>
     </div>`).join("");
   html+=`<div class="pay-preview-total"><span>Total</span><span style="color:var(--success);">${fmt(total)}</span></div>`;
-
   document.getElementById("pay-modal-body").innerHTML=html;
   document.getElementById("pay-check-num").value="";
   document.getElementById("pay-modal").classList.add("open");
@@ -686,12 +716,12 @@ function renderRecurringEditor(){
 }
 
 function syncRecurringFromDOM(){
-  const rows = document.querySelectorAll("#recurring-list > div");
-  rows.forEach((row, i) => {
-    const inputs = row.querySelectorAll("input");
+  const rows=document.querySelectorAll("#recurring-list > div");
+  rows.forEach((row,i)=>{
+    const inputs=row.querySelectorAll("input");
     if(allRecurring[i]){
-      if(inputs[0]) allRecurring[i].description = inputs[0].value.trim();
-      if(inputs[1]) allRecurring[i].amount = parseFloat(inputs[1].value) || 0;
+      if(inputs[0]) allRecurring[i].description=inputs[0].value.trim();
+      if(inputs[1]) allRecurring[i].amount=parseFloat(inputs[1].value)||0;
     }
   });
 }
@@ -699,19 +729,15 @@ function addRecurringRow(){ syncRecurringFromDOM(); allRecurring.push({descripti
 function removeRecurring(i){ syncRecurringFromDOM(); allRecurring.splice(i,1); renderRecurringEditor(); }
 
 async function saveRecurring(){
-  // Collect current values from the DOM inputs before saving
-  const rows = document.querySelectorAll("#recurring-list > div");
-  rows.forEach((row, i) => {
-    const inputs = row.querySelectorAll("input");
-    if(inputs[0]) allRecurring[i].description = inputs[0].value.trim();
-    if(inputs[1]) allRecurring[i].amount = parseFloat(inputs[1].value) || 0;
+  const rows=document.querySelectorAll("#recurring-list > div");
+  rows.forEach((row,i)=>{
+    const inputs=row.querySelectorAll("input");
+    if(inputs[0]) allRecurring[i].description=inputs[0].value.trim();
+    if(inputs[1]) allRecurring[i].amount=parseFloat(inputs[1].value)||0;
   });
-  // Filter out empty rows
-  allRecurring = allRecurring.filter(r => r.description && r.amount > 0);
-  setSyncDot(true);
+  allRecurring=allRecurring.filter(r=>r.description&&r.amount>0);
   await apiSave({ recurring: allRecurring });
-  localStorage.setItem("recurring", JSON.stringify(allRecurring));
-  setSyncDot(false);
+  localStorage.setItem("recurring",JSON.stringify(allRecurring));
   renderRecurringEditor();
   showToast("Recurring expenses saved!");
 }
@@ -778,23 +804,24 @@ tr:nth-child(even) td{background:#f5f5f5}
   if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),800); }
   else{ const b=new Blob([html],{type:"text/html"}); const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download="Reimbursement_"+dateStr+".html"; a.click(); }
 }
-// Restore session on reload (handles mobile background/foreground)
+
+// ── Restore session on reload ─────────────────────────────────
 document.addEventListener("DOMContentLoaded", async function(){
-  const savedRole = sessionStorage.getItem("role");
-  if(savedRole === "employee"){
-    currentRole = "employee";
+  const savedRole=sessionStorage.getItem("role");
+  if(savedRole==="employee"){
+    currentRole="employee";
     await loadAll();
     showScreen("screen-employee");
     empShowTab("submit");
     resetSubmitForm();
-  } else if(savedRole === "admin"){
-    currentRole = "admin";
+  } else if(savedRole==="admin"){
+    currentRole="admin";
     await loadAll();
     showScreen("screen-admin");
     admShowTab("unpaid");
     loadAdmin();
     clearInterval(pollTimer);
-    pollTimer = setInterval(()=>{ if(currentRole==="admin") loadAdmin(); }, 10000);
+    pollTimer=setInterval(()=>{ if(currentRole==="admin") loadAdmin(); },10000);
   }
 });
 </script>
