@@ -217,9 +217,14 @@ async function handleWhatsApp(request, env) {
     return await processNewExpense(env, params, from, body, numMedia);
   }
   if (body) {
-    return await processCorrection(env, from, body);
+    // Text-only message: try as a correction to the last expense first; if
+    // the text doesn't match the correction syntax (or there's no recent
+    // expense), fall through to creating a new expense from free-form text.
+    const corrected = await tryCorrection(env, from, body);
+    if (corrected) return corrected;
+    return await processTextExpense(env, from, body);
   }
-  return twiml("Send a receipt photo to log an expense, or reply with corrections after submitting.");
+  return twiml("Send a receipt photo, or describe an expense like 'home depot $42.18 today'.");
 }
 
 async function processNewExpense(env, params, from, caption, numMedia) {
@@ -301,22 +306,83 @@ async function processNewExpense(env, params, from, caption, numMedia) {
   return twiml(reply);
 }
 
-async function processCorrection(env, from, body) {
+// Returns a TwiML response if the text was successfully applied as a
+// correction to the most recent expense from this sender, or null if it
+// didn't match the correction shape (caller should fall through to
+// free-form expense creation).
+async function tryCorrection(env, from, body) {
   const lastId = await env.EXPENSES_DB.get(`last:${from}`);
-  if (!lastId) return twiml("Send a receipt photo to log an expense.");
+  if (!lastId) return null;
+  const updates = parseCorrections(body);
+  if (!Object.keys(updates).length) return null;
   const expenses = JSON.parse(await env.EXPENSES_DB.get("expenses") || "[]");
   const i = expenses.findIndex(e => e.id === lastId);
-  if (i < 0) return twiml("Couldn't find your last expense to update.");
-
-  const updates = parseCorrections(body);
-  if (!Object.keys(updates).length) {
-    return twiml("Couldn't read that correction. Try:\n  amount 50.25\n  desc TARGET\n  date 4/29");
-  }
+  if (i < 0) return null;
   expenses[i] = { ...expenses[i], ...updates };
   await env.EXPENSES_DB.put("expenses", JSON.stringify(expenses));
-
   const e = expenses[i];
   return twiml(`Updated: ${money(e.amount)} ${e.description} ${shortDate(e.date)}.`);
+}
+
+// Free-form text → new expense via Claude. The user can describe what
+// they spent without sending a receipt photo.
+async function processTextExpense(env, from, text) {
+  let parsed = { description: "", amount: 0, date: "" };
+  try {
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type":      "application/json",
+        "x-api-key":         env.ANTHROPIC_KEY,
+        "anthropic-version": "2023-06-01"
+      },
+      body: JSON.stringify({
+        model: OCR_MODEL,
+        max_tokens: 200,
+        messages: [{
+          role: "user",
+          content: `Extract expense details from this text. Reply ONLY with JSON: {"description": "...", "amount": 0.00, "date": "YYYY-MM-DD"}. Use today (${todayISO()}) if no date is mentioned. If you cannot extract a value leave it empty or 0.\n\nText: ${text}`
+        }]
+      })
+    });
+    const data    = await resp.json();
+    const content = data.content?.[0]?.text || "";
+    parsed = JSON.parse(content.replace(/```json|```/g, "").trim());
+  } catch (e) {
+    return twiml("Couldn't parse that. Try: 'home depot $42.18 today' or send a receipt photo.");
+  }
+
+  const amount = parseFloat(parsed.amount) || 0;
+  const desc   = (parsed.description || "").trim().toUpperCase();
+  if (!amount || !desc) {
+    return twiml("Need at least a description and amount. Try: 'home depot $42.18 today'.");
+  }
+
+  const expenseId = Date.now().toString();
+  const expense = {
+    id:          expenseId,
+    description: desc,
+    amount,
+    date:        parsed.date || todayISO(),
+    notes:       "",
+    status:      "unpaid",
+    submittedAt: new Date().toISOString(),
+    paidOn:      null,
+    batchId:     null,
+    source:      "whatsapp",
+    attachments: [],
+  };
+  await appendExpense(env, expense);
+  await env.EXPENSES_DB.put(`last:${from}`, expenseId, { expirationTtl: 60 * 60 * 24 * 7 });
+
+  const reply = [
+    `Got it: ${money(expense.amount)} ${expense.description} ${shortDate(expense.date)}.`,
+    `Reply with corrections like:`,
+    `  amount 50.25`,
+    `  desc TARGET`,
+    `  date 4/29`,
+  ].join("\n");
+  return twiml(reply);
 }
 
 function parseCorrections(text) {
