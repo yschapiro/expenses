@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>Ever Ready — Expenses v8</title>
+<title>Ever Ready — Expenses v9</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -339,12 +339,18 @@ async function apiSave(payload) {
   });
 }
 async function apiAppendExpense(expense) {
+  return apiCall("append-expense", { expense });
+}
+
+// Generic helper for atomic Worker actions.
+async function apiCall(action, body) {
   const r = await fetch(WORKER, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "X-Action": "append-expense" },
-    body: JSON.stringify({ expense })
+    headers: { "Content-Type": "application/json", "X-Action": action },
+    body: JSON.stringify(body || {})
   });
-  if (!r.ok) throw new Error("append-expense failed: " + r.status);
+  if (!r.ok) throw new Error(action + " failed: " + r.status);
+  return r.json();
 }
 
 // Strip photos before sending to KV — photos stay in localStorage only
@@ -662,11 +668,30 @@ function showExpenseDetail(id){
       <div><div style="font-size:12px;color:var(--muted);margin-bottom:2px;">Amount</div><div style="font-size:20px;font-weight:500;">${fmt(e.amount)}</div></div>
       <div><div style="font-size:12px;color:var(--muted);margin-bottom:2px;">Date</div><div style="font-size:16px;">${fmtDate(e.date)}</div></div>
     </div>
-    <div style="margin-bottom:10px;"><span class="pill pill-${e.status}">${e.status}</span>${e.status==="paid"?` <span style="font-size:13px;color:var(--muted);">Paid ${fmtDate(e.paidOn)}</span>`:""}</div>
+    <div style="margin-bottom:10px;"><span class="pill pill-${e.status}">${e.status}</span>${e.status==="paid"?` <span style="font-size:13px;color:var(--muted);">Paid ${fmtDate(e.paidOn)}</span>`:""}${e.source==="whatsapp"?` <span style="font-size:12px;color:var(--muted);">· via WhatsApp</span>`:""}</div>
     ${e.notes?`<div style="font-size:13px;color:var(--muted);margin-bottom:12px;">${e.notes}</div>`:""}
-    <div style="font-size:13px;color:var(--muted);">Receipt photos are stored on the submitting device.</div>
+    ${renderExpenseAttachments(e)}
   `;
   document.getElementById("expense-modal").classList.add("open");
+}
+
+// R2-stored attachments come from WhatsApp uploads; legacy `photos` (data URLs)
+// from the web form live in localStorage on the submitting device.
+function renderExpenseAttachments(e){
+  if(Array.isArray(e.attachments) && e.attachments.length){
+    const imgs = e.attachments.map(a => {
+      const src = `${WORKER}/attachment/${e.id}/${a.idx}`;
+      return `<a href="${src}" target="_blank" rel="noopener"><img src="${src}" style="width:80px;height:80px;object-fit:cover;border-radius:var(--radius-sm);border:1px solid var(--border);"></a>`;
+    }).join("");
+    return `<div class="photo-strip">${imgs}</div>`;
+  }
+  if(Array.isArray(e.photos) && e.photos.length){
+    const imgs = e.photos.map(src =>
+      `<a href="${src}" target="_blank" rel="noopener"><img src="${src}" style="width:80px;height:80px;object-fit:cover;border-radius:var(--radius-sm);border:1px solid var(--border);"></a>`
+    ).join("");
+    return `<div class="photo-strip">${imgs}</div><div style="font-size:12px;color:var(--muted);margin-top:6px;">Photos from this device only.</div>`;
+  }
+  return `<div style="font-size:13px;color:var(--muted);">No receipt photos.</div>`;
 }
 
 // ── Batch list ────────────────────────────────────────────────
@@ -744,18 +769,20 @@ async function loadAdmin(){
 }
 
 async function markPaid(id){
-  await loadAll();
-  const e=allExpenses.find(x=>x.id===id);
-  if(!e) return;
-  e.status="paid"; e.paidOn=today();
-  await saveAll(); showToast("Marked as paid"); loadAdmin();
+  try {
+    await apiCall("update-expense", { id, updates: { status: "paid", paidOn: today() } });
+    showToast("Marked as paid");
+  } catch(e) { showToast("Update failed — try again"); }
+  loadAdmin();
 }
 
 async function deleteExpense(id){
   if(!confirm("Delete this expense?")) return;
-  await loadAll();
-  allExpenses=allExpenses.filter(x=>x.id!==id);
-  await saveAll(); showToast("Deleted"); loadAdmin();
+  try {
+    await apiCall("delete-expense", { id });
+    showToast("Deleted");
+  } catch(e) { showToast("Delete failed — try again"); }
+  loadAdmin();
 }
 
 // ── Pay all ───────────────────────────────────────────────────
@@ -777,20 +804,24 @@ async function payAllAdmin(){
 }
 
 async function confirmPayAll(){
-  const checkNum=document.getElementById("pay-check-num").value.trim();
+  const checkNum = document.getElementById("pay-check-num").value.trim();
   await loadAll();
-  const unpaid=allExpenses.filter(e=>e.status==="unpaid");
+  const unpaid = allExpenses.filter(e => e.status === "unpaid");
   if(!unpaid.length){ closeModal("pay-modal"); return; }
-  const todayStr=today();
-  const batchId=Date.now().toString();
-  const total=unpaid.reduce((s,e)=>s+e.amount,0);
-  unpaid.forEach(e=>{ e.status="paid"; e.paidOn=todayStr; e.checkNumber=checkNum; e.batchId=batchId; });
-  allBatches.push({id:batchId,date:todayStr,checkNumber:checkNum,expenseIds:unpaid.map(e=>e.id),total});
-  await saveAll();
+  const todayStr = today();
+  const batchId  = Date.now().toString();
+  const total    = unpaid.reduce((s,e)=>s+e.amount, 0);
+  const ids      = unpaid.map(e => e.id);
+  try {
+    await apiCall("pay-batch", { ids, paidOn: todayStr, checkNumber: checkNum, batchId, total });
+  } catch(e) {
+    showToast("Pay-all failed — try again");
+    return;
+  }
   closeModal("pay-modal");
-  generatePDFReport(unpaid,checkNum,todayStr);
+  generatePDFReport(unpaid, checkNum, todayStr);
   loadAdmin();
-  showToast(unpaid.length+" expenses marked paid");
+  showToast(unpaid.length + " expenses marked paid");
 }
 
 // ── Recurring ─────────────────────────────────────────────────
@@ -829,7 +860,8 @@ async function saveRecurring(){
     if(inputs[1]) allRecurring[i].amount=parseFloat(inputs[1].value)||0;
   });
   allRecurring=allRecurring.filter(r=>r.description&&r.amount>0);
-  await apiSave({ recurring: allRecurring });
+  try { await apiCall("save-recurring", { recurring: allRecurring }); }
+  catch(e) { showToast("Save failed — try again"); return; }
   localStorage.setItem("recurring",JSON.stringify(allRecurring));
   renderRecurringEditor();
   showToast("Recurring expenses saved!");
@@ -838,14 +870,26 @@ async function saveRecurring(){
 async function runRecurringNow(){
   await loadAll();
   if(!allRecurring.length){ alert("No recurring expenses set up yet."); return; }
-  allRecurring.forEach(r=>{
-    if(!r.description||!r.amount) return;
-    allExpenses.push({id:Date.now().toString()+"_r"+Math.random().toString(36).slice(2),description:r.description.toUpperCase(),amount:r.amount,date:today(),notes:"Auto-recurring",photos:[],status:"unpaid",submittedAt:new Date().toISOString(),paidOn:null,batchId:null});
-  });
-  await saveAll();
+  const todayStr = today();
+  const submittedAt = new Date().toISOString();
+  const batch = allRecurring
+    .filter(r => r.description && r.amount)
+    .map(r => ({
+      id: Date.now().toString() + "_r" + Math.random().toString(36).slice(2),
+      description: r.description.toUpperCase(),
+      amount: r.amount,
+      date: todayStr,
+      notes: "Auto-recurring",
+      status: "unpaid",
+      submittedAt,
+      paidOn: null,
+      batchId: null,
+    }));
+  try { await apiCall("add-expenses", { expenses: batch }); }
+  catch(e) { showToast("Failed — try again"); return; }
   admShowTab("unpaid");
   loadAdmin();
-  showToast(allRecurring.length+" recurring expense(s) added!");
+  showToast(batch.length + " recurring expense(s) added!");
 }
 
 // ── PDF Report ────────────────────────────────────────────────
