@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>Ever Ready — Expenses v7</title>
+<title>Ever Ready — Expenses v8</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -193,7 +193,7 @@ input[type="file"]{display:none}
       <div id="ai-status" class="ai-status"><div class="spinner"></div><span id="ai-status-text">Reading your receipt...</span></div>
       <div class="card">
         <div class="card-title">Expense details</div>
-        <div class="field"><label>Description</label><input type="text" id="f-desc" placeholder="e.g. Home Depot, Gas, Tolls" list="desc-history" autocomplete="off" onkeydown="empSubmitOnEnter(event)"><datalist id="desc-history"></datalist></div>
+        <div class="field"><label>Description</label><input type="text" id="f-desc" placeholder="e.g. Home Depot, Gas, Tolls" autocomplete="off" onkeydown="empSubmitOnEnter(event)" oninput="handleDescInput(event)"></div>
        <div class="field"><label>Amount ($)</label><input type="number" id="f-amount" placeholder="0.00" step="0.01" inputmode="decimal" min="-99999" onkeydown="empSubmitOnEnter(event)"></div>
         <div class="field"><label>Date</label><input type="date" id="f-date" onkeydown="empSubmitOnEnter(event)"></div>
         <div class="field"><label>Notes (optional)</label><textarea id="f-notes" placeholder="Any extra detail..."></textarea></div>
@@ -394,11 +394,16 @@ async function loadAll() {
   refreshDescriptionHistory();
 }
 
-// Populate the <datalist> with past descriptions, most-recent unique first,
-// so the browser autocompletes after typing a few letters.
+// Excel-style inline autocomplete:
+//   descriptionHistory is the most-recent-unique list of past descriptions.
+//   refreshDescriptionHistory rebuilds it from allExpenses.
+//   handleDescInput, on every typed character, prefix-matches the typed text
+//   against the history and pre-fills the field with the match while keeping
+//   the unmatched suffix selected — so continued typing replaces the suffix
+//   and Tab/Enter accepts the suggestion (selection collapses to the end).
+let descriptionHistory = [];
+
 function refreshDescriptionHistory(){
-  const dl = document.getElementById("desc-history");
-  if(!dl) return;
   const seen = new Set();
   const ordered = [];
   for(let i = allExpenses.length - 1; i >= 0; i--){
@@ -408,9 +413,34 @@ function refreshDescriptionHistory(){
     if(seen.has(key)) continue;
     seen.add(key);
     ordered.push(d);
-    if(ordered.length >= 50) break;
+    if(ordered.length >= 500) break;
   }
-  dl.innerHTML = ordered.map(d => `<option value="${d.replace(/"/g,'&quot;')}"></option>`).join("");
+  descriptionHistory = ordered;
+}
+
+function findDescriptionMatch(prefix){
+  if(!prefix) return null;
+  const p = prefix.toUpperCase();
+  for(const d of descriptionHistory){
+    if(d.length > prefix.length && d.toUpperCase().startsWith(p)) return d;
+  }
+  return null;
+}
+
+function handleDescInput(e){
+  // Only run on real character typing — skip backspace/delete/paste/undo so
+  // we don't re-suggest after the user is trying to edit or remove something.
+  if(e.inputType !== "insertText") return;
+  const input = e.target;
+  const typed = input.value;
+  if(!typed) return;
+  // Don't suggest if caret isn't at the end (user editing mid-string).
+  if(input.selectionStart !== typed.length) return;
+  const match = findDescriptionMatch(typed);
+  if(match){
+    input.value = match;
+    input.setSelectionRange(typed.length, match.length);
+  }
 }
 
 async function saveAll() {
