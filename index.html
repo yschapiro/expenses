@@ -326,6 +326,12 @@ let allBatches   = [];
 let allRecurring = [];
 let pollTimer    = null;
 
+// One-time cleanup: older versions stored receipt photos as base64 in
+// localStorage, which could fill the browser's ~5MB quota and freeze the submit
+// form on phones. Photos now upload to R2, so drop the legacy blob to free that
+// space and stop the freeze.
+try { localStorage.removeItem("expense-photos"); } catch(e) {}
+
 // ── API ───────────────────────────────────────────────────────
 async function apiGet() {
   const r = await fetch(WORKER, { headers: { "X-Action": "get" } });
@@ -629,7 +635,21 @@ async function submitExpense(){
   btn.textContent="Submitting…";
 
   const id=Date.now().toString();
-  savePhotosLocally(id, capturedPhotos.slice());
+
+  // Upload receipt photos to R2 (server-side) so the admin can view them from
+  // any device. Best-effort: if an upload fails we still submit the expense, so
+  // the user is never blocked — the photo just won't be attached.
+  const photos = capturedPhotos.slice();
+  const attachments = [];
+  for(let i=0;i<photos.length;i++){
+    try{
+      const src = photos[i];
+      const contentType = (src.split(";")[0].split(":")[1]) || "image/jpeg";
+      const data = src.split(",")[1];
+      await apiCall("upload-attachment", { expenseId:id, idx:i, contentType, data });
+      attachments.push({ idx:i, contentType });
+    }catch(err){ /* skip this photo, keep going */ }
+  }
 
   const expense={
     id,
@@ -637,11 +657,12 @@ async function submitExpense(){
     amount, date, notes,
     status: "unpaid",
     submittedAt: new Date().toISOString(),
-    paidOn: null, batchId: null
+    paidOn: null, batchId: null,
+    ...(attachments.length ? { attachments } : {})
   };
 
   // Keep in local memory with photos for this session
-  allExpenses.push({ ...expense, photos: capturedPhotos.slice() });
+  allExpenses.push({ ...expense, photos });
   refreshDescriptionHistory();
 
   try {
