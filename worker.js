@@ -60,6 +60,19 @@ export default {
         return json({ ok: true });
       }
 
+      if (action === "upload-attachment") {
+        // body: { expenseId, idx, contentType, data }  (data = base64, no prefix)
+        // Stores a web-form receipt photo in R2, mirroring the WhatsApp path so
+        // the admin can view it from any device.
+        const buf = base64ToArrayBuffer(body.data || "");
+        await env.EXPENSES_R2.put(
+          attachmentKey(body.expenseId, body.idx),
+          buf,
+          { httpMetadata: { contentType: body.contentType || "image/jpeg" } }
+        );
+        return json({ ok: true });
+      }
+
       if (action === "add-expenses") {
         const list = Array.isArray(body.expenses) ? body.expenses : [];
         const existing = JSON.parse(await env.EXPENSES_DB.get("expenses") || "[]");
@@ -370,6 +383,14 @@ function arrayBufferToBase64(buf) {
     str += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
   }
   return btoa(str);
+}
+
+function base64ToArrayBuffer(b64) {
+  const bin = atob(b64);
+  const len = bin.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes.buffer;
 }
 
 function twiml(message, status = 200) {
