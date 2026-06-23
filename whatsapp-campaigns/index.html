@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhatsApp Campaigns</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f6f8;--surface:#fff;--border:#e3e6ea;--text:#1a1a1a;--muted:#666;--hint:#999;
+  --primary:#075E54;--accent:#25D366;--danger:#c0392b;--danger-bg:#fdecea;
+  --ok:#1f8a4c;--ok-bg:#e3f7ea;--warn:#b9770e;--warn-bg:#fdf3e0;--info-bg:#eef2f6;
+  --radius:12px;--radius-sm:8px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;min-height:100vh}
+.screen{display:none}.screen.active{display:block}
+
+/* PIN */
+.pin-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.pin-logo{font-size:13px;font-weight:600;color:var(--muted);text-align:center;margin-bottom:8px;letter-spacing:.5px;text-transform:uppercase}
+.pin-title{font-size:22px;font-weight:500;text-align:center;margin-bottom:28px}
+.pin-dots{display:flex;gap:12px;justify-content:center;margin-bottom:28px}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);background:var(--surface);transition:all .15s}
+.pin-dot.filled{background:var(--primary);border-color:var(--primary)}
+.pin-dot.error{background:var(--danger);border-color:var(--danger)}
+.pin-grid{display:grid;grid-template-columns:repeat(3,72px);gap:12px;justify-content:center}
+.pin-key{width:72px;height:72px;border-radius:50%;border:1px solid var(--border);background:var(--surface);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
+.pin-key:active{background:var(--bg)}
+.pin-hint{font-size:13px;color:var(--hint);text-align:center;margin-top:14px}
+
+/* Shell */
+.app-header{background:var(--primary);color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.app-title{font-size:17px;font-weight:600}
+.logout-btn{background:none;border:1px solid rgba(255,255,255,.4);color:#fff;font-size:13px;padding:5px 12px;border-radius:20px;cursor:pointer}
+.page{padding:18px;max-width:680px;margin:0 auto}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.card.clickable{cursor:pointer;transition:border-color .15s}
+.card.clickable:active{border-color:#aaa}
+.card-title{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+
+/* Forms */
+label{display:block;font-size:13px;font-weight:500;color:var(--muted);margin:12px 0 4px}
+input[type=text],input[type=email],textarea{width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-size:15px;font-family:inherit;background:var(--surface);color:var(--text)}
+textarea{resize:vertical;min-height:72px}
+.row{display:flex;gap:10px;align-items:center}
+.check{display:flex;align-items:center;gap:8px;margin-top:12px}
+.check input{width:18px;height:18px}
+
+/* Buttons */
+.btn{display:inline-block;border:none;border-radius:var(--radius-sm);padding:11px 16px;font-size:15px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.btn-primary{background:var(--primary);color:#fff;width:100%}
+.btn-accent{background:var(--accent);color:#063}
+.btn-ghost{background:var(--surface);border:1px solid var(--border);color:var(--text)}
+.btn-danger{background:var(--danger-bg);color:var(--danger)}
+.btn-sm{padding:7px 12px;font-size:13px;width:auto}
+.btn:disabled{opacity:.5;cursor:default}
+.btn+.btn{margin-left:8px}
+
+/* Status chips */
+.chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.3px}
+.chip-pending{background:var(--info-bg);color:var(--muted)}
+.chip-sent{background:var(--warn-bg);color:var(--warn)}
+.chip-failed{background:var(--danger-bg);color:var(--danger)}
+.chip-replied{background:var(--ok-bg);color:var(--ok)}
+
+.muted{color:var(--muted)}.hint{color:var(--hint);font-size:13px}
+.spacer{height:8px}
+.counts{display:flex;gap:14px;font-size:13px;color:var(--muted);margin-top:6px}
+.counts b{color:var(--text)}
+.recipient{border-top:1px solid var(--border);padding:10px 0}
+.recipient:first-child{border-top:none}
+.reply{background:var(--ok-bg);border-radius:var(--radius-sm);padding:8px 10px;margin-top:6px;font-size:14px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 18px;border-radius:24px;font-size:14px;z-index:1000;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.back{background:none;border:none;color:var(--primary);font-size:14px;cursor:pointer;padding:0;margin-bottom:12px}
+.empty{text-align:center;color:var(--hint);padding:40px 0}
+</style>
+</head>
+<body>
+
+<!-- PIN -->
+<div id="pinScreen" class="screen active">
+  <div class="pin-wrap">
+    <div class="pin-logo">WhatsApp Campaigns</div>
+    <div class="pin-title">Enter your PIN</div>
+    <div class="pin-dots" id="pinDots"></div>
+    <div class="pin-grid">
+      <button class="pin-key" data-k="1">1</button><button class="pin-key" data-k="2">2</button><button class="pin-key" data-k="3">3</button>
+      <button class="pin-key" data-k="4">4</button><button class="pin-key" data-k="5">5</button><button class="pin-key" data-k="6">6</button>
+      <button class="pin-key" data-k="7">7</button><button class="pin-key" data-k="8">8</button><button class="pin-key" data-k="9">9</button>
+      <span></span><button class="pin-key" data-k="0">0</button><button class="pin-key" data-k="del">⌫</button>
+    </div>
+    <div class="pin-hint" id="pinHint"></div>
+  </div>
+</div>
+
+<!-- App -->
+<div id="appScreen" class="screen">
+  <div class="app-header">
+    <span class="app-title">WhatsApp Campaigns</span>
+    <button class="logout-btn" onclick="logout()">Lock</button>
+  </div>
+
+  <!-- List view -->
+  <div id="listView" class="page">
+    <button class="btn btn-primary" onclick="showNew()">+ New campaign</button>
+    <div class="spacer"></div>
+    <div id="campaignList"></div>
+  </div>
+
+  <!-- New campaign view -->
+  <div id="newView" class="page" style="display:none">
+    <button class="back" onclick="showList()">← Back</button>
+    <div class="card">
+      <div class="card-title">New campaign</div>
+      <label>Campaign name</label>
+      <input type="text" id="cName" placeholder="June check-in">
+
+      <div class="check">
+        <input type="checkbox" id="cUseTemplate" onchange="toggleTemplate()">
+        <label style="margin:0">Use an approved Twilio template (required for cold/first contact)</label>
+      </div>
+
+      <div id="msgBlock">
+        <label>Message <span class="hint">— use {{name}} to personalize</span></label>
+        <textarea id="cMessage" placeholder="Hi {{name}}, quick question — are you available next Tuesday? Reply YES or NO."></textarea>
+      </div>
+
+      <div id="tmplBlock" style="display:none">
+        <label>Twilio Content SID</label>
+        <input type="text" id="cTemplateSid" placeholder="HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+        <div class="hint">The recipient's name fills template variable {{1}}.</div>
+      </div>
+
+      <label>Recipients <span class="hint">— one per line: <code>Name, +15551234567</code></span></label>
+      <textarea id="cRecipients" style="min-height:140px" placeholder="Alice, +15551234567&#10;Bob, +15557654321&#10;+15559998888"></textarea>
+
+      <div class="spacer"></div>
+      <button class="btn btn-primary" id="createBtn" onclick="createCampaign()">Create campaign</button>
+    </div>
+  </div>
+
+  <!-- Detail view -->
+  <div id="detailView" class="page" style="display:none">
+    <button class="back" onclick="showList()">← Back</button>
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Config ──────────────────────────────────────────────────────
+// Point this at your deployed Worker, e.g. https://campaigns.<you>.workers.dev
+const WORKER = "https://CHANGE-ME.workers.dev";
+const APP_PIN = "1234";   // change before sharing
+
+// ── PIN gate ────────────────────────────────────────────────────
+let currentPin = "";
+function renderDots(){
+  const d = document.getElementById("pinDots"); d.innerHTML = "";
+  for(let i=0;i<4;i++){ const s=document.createElement("div"); s.className="pin-dot"+(i<currentPin.length?" filled":""); d.appendChild(s); }
+}
+renderDots();
+document.querySelectorAll(".pin-key").forEach(b=>b.addEventListener("click",()=>{
+  const k=b.dataset.k;
+  if(k==="del"){ currentPin=currentPin.slice(0,-1); renderDots(); return; }
+  if(currentPin.length>=4) return;
+  currentPin+=k; renderDots();
+  if(currentPin.length===4) setTimeout(checkPin,120);
+}));
+function checkPin(){
+  if(currentPin===APP_PIN){
+    document.getElementById("pinScreen").classList.remove("active");
+    document.getElementById("appScreen").classList.add("active");
+    sessionStorage.setItem("wac-auth","1");
+    load();
+  } else {
+    document.querySelectorAll(".pin-dot").forEach(d=>d.classList.add("error"));
+    document.getElementById("pinHint").textContent="Wrong PIN";
+    setTimeout(()=>{ currentPin=""; renderDots(); document.getElementById("pinHint").textContent=""; },700);
+  }
+}
+function logout(){ sessionStorage.removeItem("wac-auth"); location.reload(); }
+if(sessionStorage.getItem("wac-auth")==="1"){
+  document.getElementById("pinScreen").classList.remove("active");
+  document.getElementById("appScreen").classList.add("active");
+  load();
+}
+
+// ── API ─────────────────────────────────────────────────────────
+let campaigns = [];
+async function api(action, body){
+  const opts = action==="get"
+    ? { headers:{ "X-Action":"get" } }
+    : { method:"POST", headers:{ "Content-Type":"application/json", "X-Action":action }, body:JSON.stringify(body||{}) };
+  const r = await fetch(WORKER, opts);
+  return r.json();
+}
+async function load(){
+  try { const d = await api("get"); campaigns = d.campaigns || []; renderList(); }
+  catch(e){ toast("Can't reach the server — check WORKER URL"); }
+}
+
+// ── Views ───────────────────────────────────────────────────────
+function show(id){ ["listView","newView","detailView"].forEach(v=>document.getElementById(v).style.display = v===id?"block":"none"); }
+function showList(){ show("listView"); renderList(); }
+function showNew(){
+  document.getElementById("cName").value="";
+  document.getElementById("cMessage").value="";
+  document.getElementById("cTemplateSid").value="";
+  document.getElementById("cRecipients").value="";
+  document.getElementById("cUseTemplate").checked=false;
+  toggleTemplate();
+  show("newView");
+}
+function toggleTemplate(){
+  const on=document.getElementById("cUseTemplate").checked;
+  document.getElementById("tmplBlock").style.display=on?"block":"none";
+  document.getElementById("msgBlock").style.display=on?"none":"block";
+}
+
+function renderList(){
+  const el=document.getElementById("campaignList");
+  if(!campaigns.length){ el.innerHTML=`<div class="empty">No campaigns yet.<br>Tap “New campaign” to start.</div>`; return; }
+  el.innerHTML = campaigns.map(c=>{
+    const n=c.recipients.length;
+    const replied=c.recipients.filter(r=>r.replies.length).length;
+    const sent=c.recipients.filter(r=>r.status==="sent"||r.status==="replied").length;
+    return `<div class="card clickable" onclick="openDetail('${c.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <strong>${esc(c.name)}</strong>
+        <span class="hint">${fmtDate(c.createdAt)}</span>
+      </div>
+      <div class="counts"><span><b>${n}</b> recipients</span><span><b>${sent}</b> sent</span><span><b>${replied}</b> replied</span></div>
+    </div>`;
+  }).join("");
+}
+
+function openDetail(id){
+  const c=campaigns.find(x=>x.id===id); if(!c) return;
+  const replied=c.recipients.filter(r=>r.replies.length).length;
+  const unsent=c.recipients.filter(r=>r.status==="pending"||r.status==="failed").length;
+  document.getElementById("detailContent").innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:start">
+        <div><strong style="font-size:17px">${esc(c.name)}</strong><div class="hint">${fmtDate(c.createdAt)}</div></div>
+        <button class="btn btn-danger btn-sm" onclick="del('${c.id}')">Delete</button>
+      </div>
+      <div class="spacer"></div>
+      <div class="card-title">Message</div>
+      <div class="muted">${c.useTemplate ? "Template: "+esc(c.templateSid) : esc(c.message)}</div>
+      <div class="spacer"></div>
+      <div class="row">
+        <button class="btn btn-accent btn-sm" id="sendBtn" onclick="send('${c.id}')">${unsent? `Send to ${unsent}` : "Re-send unsent"}</button>
+        <button class="btn btn-ghost btn-sm" onclick="load().then(()=>openDetail('${c.id}'))">Refresh replies</button>
+        <button class="btn btn-ghost btn-sm" onclick="emailResults('${c.id}')">Email results</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Recipients · ${replied}/${c.recipients.length} replied</div>
+      ${c.recipients.map(r=>`
+        <div class="recipient">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span><strong>${esc(r.name||r.phone)}</strong> <span class="hint">${esc(r.phone)}</span></span>
+            <span class="chip chip-${r.status}">${r.status}</span>
+          </div>
+          ${r.error?`<div class="hint" style="color:var(--danger)">${esc(r.error)}</div>`:""}
+          ${r.replies.map(rep=>`<div class="reply">${esc(rep.body)}<div class="hint">${fmtDate(rep.at)}</div></div>`).join("")}
+        </div>`).join("")}
+    </div>`;
+  show("detailView");
+}
+
+// ── Actions ─────────────────────────────────────────────────────
+function parseRecipients(text){
+  return text.split(/\n/).map(l=>l.trim()).filter(Boolean).map(line=>{
+    // "Name, +1555..." or "Name +1555..." or just a number
+    const m = line.match(/^(.*?)[,\t]\s*(.+)$/);
+    if(m) return { name:m[1].trim(), phone:m[2].trim() };
+    const parts = line.split(/\s+/);
+    if(parts.length>1 && /\d/.test(parts[parts.length-1])){
+      const phone=parts.pop(); return { name:parts.join(" "), phone };
+    }
+    return { name:"", phone:line };
+  });
+}
+async function createCampaign(){
+  const useTemplate=document.getElementById("cUseTemplate").checked;
+  const body={
+    name: document.getElementById("cName").value,
+    message: document.getElementById("cMessage").value,
+    useTemplate,
+    templateSid: document.getElementById("cTemplateSid").value,
+    recipients: parseRecipients(document.getElementById("cRecipients").value),
+  };
+  const btn=document.getElementById("createBtn"); btn.disabled=true; btn.textContent="Creating…";
+  const res=await api("create-campaign", body);
+  btn.disabled=false; btn.textContent="Create campaign";
+  if(!res.ok){ toast(res.error||"Failed"); return; }
+  await load(); openDetail(res.campaign.id); toast("Campaign created");
+}
+async function send(id){
+  const btn=document.getElementById("sendBtn"); if(btn){btn.disabled=true; btn.textContent="Sending…";}
+  const res=await api("send-campaign",{id});
+  if(!res.ok){ toast(res.error||"Send failed"); if(btn) btn.disabled=false; return; }
+  await load(); openDetail(id);
+  toast(`Sent ${res.sent}${res.failed?`, ${res.failed} failed`:""}`);
+}
+async function emailResults(id){
+  const res=await api("email-results",{id});
+  toast(res.ok ? "Results emailed" : (res.error||"Email failed"));
+}
+async function del(id){
+  if(!confirm("Delete this campaign?")) return;
+  await api("delete-campaign",{id});
+  await load(); showList(); toast("Deleted");
+}
+
+// ── utils ───────────────────────────────────────────────────────
+function esc(s){ return String(s==null?"":s).replace(/[<>&]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[c])); }
+function fmtDate(iso){ if(!iso) return ""; const d=new Date(iso); return d.toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}); }
+let toastT;
+function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),2600); }
+</script>
+</body>
+</html>
