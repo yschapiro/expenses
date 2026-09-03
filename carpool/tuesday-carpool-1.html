@@ -1,0 +1,164 @@
+<title>Tuesday Carpool &mdash; Schapiro &amp; Brown</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Newsreader:opsz,wght@6..72,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  @page{ size:Letter; margin:14mm 14mm 12mm; }
+  :root{
+    --ink:#111820; --ink-2:#4A5560; --ink-3:#78838E;
+    --line:#D5DDE4; --line-strong:#B0BBC5;
+    --a:#0F5570; --a-soft:#E4F0F5;
+    --b:#6E4E24; --b-soft:#F4ECDF;
+  }
+  *{box-sizing:border-box}
+  body{
+    background:#FFFFFF; color:var(--ink);
+    font-family:"Newsreader",Georgia,"Times New Roman",serif;
+    font-size:10.2pt; line-height:1.5; margin:0;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{display:flex;flex-direction:column;gap:15px}
+
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:10.5px;letter-spacing:.17em;text-transform:uppercase;
+    color:var(--a);margin:0 0 6px;
+  }
+  h1{
+    font-family:"Archivo",system-ui,sans-serif;
+    font-weight:700;font-size:1.9rem;line-height:1.02;
+    letter-spacing:-.022em;margin:0 0 8px;text-wrap:balance;
+  }
+  .lede{margin:0;max-width:66ch;color:var(--ink-2);font-size:1rem}
+  .lede b{color:var(--ink);font-weight:400;font-style:italic}
+  .meta{
+    display:flex;flex-wrap:wrap;gap:6px 16px;
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:11.5px;color:var(--ink-2);font-variant-numeric:tabular-nums;
+    margin-top:9px;padding-top:8px;border-top:1px solid var(--line);
+  }
+  .meta b{color:var(--ink);font-weight:500}
+
+  h2{
+    font-family:"Archivo",system-ui,sans-serif;
+    font-weight:600;font-size:.98rem;margin:0 0 10px;
+  }
+
+  table{width:100%;border-collapse:collapse}
+  thead th{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--ink-3);font-weight:400;text-align:left;
+    padding:0 10px 7px;border-bottom:1px solid var(--line-strong);
+  }
+  tbody td{
+    padding:4px 10px;border-bottom:1px solid var(--line);
+    vertical-align:middle;
+  }
+  tbody tr:last-child td{border-bottom:none}
+  td.n{
+    width:30px;text-align:right;color:var(--ink-3);
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:10.5px;font-variant-numeric:tabular-nums;
+  }
+  td.date{
+    width:118px;white-space:nowrap;
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:12.5px;font-variant-numeric:tabular-nums;
+  }
+  td.who{
+    font-family:"Archivo",system-ui,sans-serif;
+    font-weight:600;font-size:1.02rem;letter-spacing:-.008em;
+  }
+  /* the alternating half of the pair, marked so the pattern reads at a glance */
+  tr.p0 td.date{box-shadow:inset 3px 0 0 var(--b)}
+  tr.p1 td.date{box-shadow:inset 3px 0 0 var(--a)}
+  tr.p0 td.lead{color:var(--b)}
+  tr.p1 td.lead{color:var(--a)}
+
+  .tally{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{
+    border:1px solid var(--line);border-radius:6px;
+    padding:7px 11px 8px;display:flex;flex-direction:column;gap:1px;
+    min-width:112px;
+  }
+  .chip .cw{
+    font-family:"Archivo",system-ui,sans-serif;
+    font-weight:600;font-size:.97rem;
+  }
+  .chip .cn{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:11px;color:var(--ink-2);font-variant-numeric:tabular-nums;
+  }
+  .chip.k0{border-color:var(--b);background:var(--b-soft)}
+  .chip.k1{border-color:var(--a);background:var(--a-soft)}
+
+  footer{
+    border-top:1px solid var(--line);padding-top:11px;
+    color:var(--ink-2);font-size:.92rem;
+  }
+  footer p{margin:0 0 5px;max-width:70ch}
+  footer p:last-child{margin-bottom:0}
+  footer strong{
+    color:var(--ink);font-weight:400;
+    font-family:"Archivo",system-ui,sans-serif;font-size:.89rem;
+  }
+  tr,section,.chip{break-inside:avoid}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Tuesdays &middot; Sep 8, 2026 &ndash; Jan 12, 2027</p>
+    <h1>Carpool &mdash; Schapiro &amp; Brown</h1>
+    <p class="lede">Just the two of us. We alternate week to week, and whoever is
+      up that Tuesday drives <b>both ways</b> &mdash; there in the morning and back
+      afterwards. No splitting the day.</p>
+    <div class="meta">
+      <span><b>17</b> Tuesdays</span>
+      <span>Brown <b>9</b></span>
+      <span>Schapiro <b>8</b></span>
+      <span>Alternating, Brown first</span>
+    </div>
+  </header>
+
+  <section>
+    <table>
+      <thead><tr><th></th><th>Date</th><th>Driving &mdash; both ways</th></tr></thead>
+      <tbody>
+      <tr class="p0"><td class="n">1</td><td class="date">Sep 8, 2026</td><td class="who lead">Brown</td></tr>
+      <tr class="p1"><td class="n">2</td><td class="date">Sep 15, 2026</td><td class="who lead">Schapiro</td></tr>
+      <tr class="p0"><td class="n">3</td><td class="date">Sep 22, 2026</td><td class="who lead">Brown</td></tr>
+      <tr class="p1"><td class="n">4</td><td class="date">Oct 6, 2026</td><td class="who lead">Schapiro</td></tr>
+      <tr class="p0"><td class="n">5</td><td class="date">Oct 13, 2026</td><td class="who lead">Brown</td></tr>
+      <tr class="p1"><td class="n">6</td><td class="date">Oct 20, 2026</td><td class="who lead">Schapiro</td></tr>
+      <tr class="p0"><td class="n">7</td><td class="date">Oct 27, 2026</td><td class="who lead">Brown</td></tr>
+      <tr class="p1"><td class="n">8</td><td class="date">Nov 3, 2026</td><td class="who lead">Schapiro</td></tr>
+      <tr class="p0"><td class="n">9</td><td class="date">Nov 10, 2026</td><td class="who lead">Brown</td></tr>
+      <tr class="p1"><td class="n">10</td><td class="date">Nov 17, 2026</td><td class="who lead">Schapiro</td></tr>
+      <tr class="p0"><td class="n">11</td><td class="date">Nov 24, 2026</td><td class="who lead">Brown</td></tr>
+      <tr class="p1"><td class="n">12</td><td class="date">Dec 1, 2026</td><td class="who lead">Schapiro</td></tr>
+      <tr class="p0"><td class="n">13</td><td class="date">Dec 15, 2026</td><td class="who lead">Brown</td></tr>
+      <tr class="p1"><td class="n">14</td><td class="date">Dec 22, 2026</td><td class="who lead">Schapiro</td></tr>
+      <tr class="p0"><td class="n">15</td><td class="date">Dec 29, 2026</td><td class="who lead">Brown</td></tr>
+      <tr class="p1"><td class="n">16</td><td class="date">Jan 5, 2027</td><td class="who lead">Schapiro</td></tr>
+      <tr class="p0"><td class="n">17</td><td class="date">Jan 12, 2027</td><td class="who lead">Brown</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Tuesdays each</h2>
+    <div class="tally">
+      <div class="chip k0"><span class="cw">Brown</span><span class="cn">9 of 17 Tuesdays</span></div>
+      <div class="chip k1"><span class="cw">Schapiro</span><span class="cn">8 of 17 Tuesdays</span></div>
+    </div>
+  </section>
+
+  <footer>
+    <p><strong>Why the counts differ.</strong> Seventeen Tuesdays doesn&rsquo;t split
+      in two, so one of us takes the extra. Brown starts, which puts the ninth on
+      Brown and the eighth on Schapiro.</p>
+    <p><strong>Swapping.</strong> Trade a date between the two of you whenever it
+      helps; the printed order doesn&rsquo;t need to change.</p>
+  </footer>
+</div>
