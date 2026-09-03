@@ -75,12 +75,16 @@
   tr.p1 td.date{box-shadow:inset 3px 0 0 var(--a)}
   tr.p0 td.lead{color:var(--b)}
   tr.p1 td.lead{color:var(--a)}
+  /* sheet 2 marks the pair on the cell - only they appear in the there column */
+  td.lead.p0{color:var(--b)}
+  td.lead.p1{color:var(--a)}
 
   .tally{display:flex;flex-wrap:wrap;gap:8px}
+  .tally.six{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
   .chip{
     border:1px solid var(--line);border-radius:6px;
     padding:7px 11px 8px;display:flex;flex-direction:column;gap:1px;
-    min-width:112px;
+    min-width:0;
   }
   .chip .cw{
     font-family:"Archivo",system-ui,sans-serif;
@@ -90,6 +94,8 @@
     font-family:"IBM Plex Mono",ui-monospace,monospace;
     font-size:11px;color:var(--ink-2);font-variant-numeric:tabular-nums;
   }
+  .chip .cn b{color:var(--ink);font-weight:500}
+  h2 b{font-weight:600}
   .chip.k0{border-color:var(--b);background:var(--b-soft)}
   .chip.k1{border-color:var(--a);background:var(--a-soft)}
 

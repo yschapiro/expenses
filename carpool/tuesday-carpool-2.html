@@ -75,12 +75,16 @@
   tr.p1 td.date{box-shadow:inset 3px 0 0 var(--a)}
   tr.p0 td.lead{color:var(--b)}
   tr.p1 td.lead{color:var(--a)}
+  /* sheet 2 marks the pair on the cell - only they appear in the there column */
+  td.lead.p0{color:var(--b)}
+  td.lead.p1{color:var(--a)}
 
   .tally{display:flex;flex-wrap:wrap;gap:8px}
+  .tally.six{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
   .chip{
     border:1px solid var(--line);border-radius:6px;
     padding:7px 11px 8px;display:flex;flex-direction:column;gap:1px;
-    min-width:112px;
+    min-width:0;
   }
   .chip .cw{
     font-family:"Archivo",system-ui,sans-serif;
@@ -90,6 +94,8 @@
     font-family:"IBM Plex Mono",ui-monospace,monospace;
     font-size:11px;color:var(--ink-2);font-variant-numeric:tabular-nums;
   }
+  .chip .cn b{color:var(--ink);font-weight:500}
+  h2 b{font-weight:600}
   .chip.k0{border-color:var(--b);background:var(--b-soft)}
   .chip.k1{border-color:var(--a);background:var(--a-soft)}
 
@@ -110,15 +116,15 @@
   <header>
     <p class="eyebrow">Tuesdays &middot; Sep 8, 2026 &ndash; Jan 12, 2027</p>
     <h1>Tuesday Carpool</h1>
-    <p class="lede">Six families, two drivers a Tuesday. Schapiro and Brown are
-      already making the morning run, so they alternate and cover <b>every
-      drop-off</b>. Schreiber, Shaiman, Tzur and Natanelli rotate the
-      <b>pickups</b>.</p>
+    <p class="lede">Six families, two drivers a Tuesday &mdash; one takes them
+      <b>there</b>, someone else brings them <b>back</b>. Everyone carries the same
+      share. Schapiro and Brown do <b>drop-offs only</b>; the other four take both
+      legs.</p>
     <div class="meta">
       <span><b>17</b> Tuesdays</span>
       <span><b>6</b> families</span>
-      <span>Drop-offs: Schapiro 8, Brown 9</span>
-      <span>Pickups: 4&ndash;5 each</span>
+      <span><b>34</b> legs</span>
+      <span><b>5&ndash;6</b> legs each</span>
     </div>
   </header>
 
@@ -126,42 +132,43 @@
     <table>
       <thead><tr><th></th><th>Date</th><th>Drive there</th><th>Drive back</th></tr></thead>
       <tbody>
-      <tr class="p0"><td class="n">1</td><td class="date">Sep 8, 2026</td><td class="who lead">Brown</td><td class="who">Schreiber</td></tr>
-      <tr class="p1"><td class="n">2</td><td class="date">Sep 15, 2026</td><td class="who lead">Schapiro</td><td class="who">Shaiman</td></tr>
-      <tr class="p0"><td class="n">3</td><td class="date">Sep 22, 2026</td><td class="who lead">Brown</td><td class="who">Tzur</td></tr>
-      <tr class="p1"><td class="n">4</td><td class="date">Oct 6, 2026</td><td class="who lead">Schapiro</td><td class="who">Natanelli</td></tr>
-      <tr class="p0"><td class="n">5</td><td class="date">Oct 13, 2026</td><td class="who lead">Brown</td><td class="who">Schreiber</td></tr>
-      <tr class="p1"><td class="n">6</td><td class="date">Oct 20, 2026</td><td class="who lead">Schapiro</td><td class="who">Shaiman</td></tr>
-      <tr class="p0"><td class="n">7</td><td class="date">Oct 27, 2026</td><td class="who lead">Brown</td><td class="who">Tzur</td></tr>
-      <tr class="p1"><td class="n">8</td><td class="date">Nov 3, 2026</td><td class="who lead">Schapiro</td><td class="who">Natanelli</td></tr>
-      <tr class="p0"><td class="n">9</td><td class="date">Nov 10, 2026</td><td class="who lead">Brown</td><td class="who">Schreiber</td></tr>
-      <tr class="p1"><td class="n">10</td><td class="date">Nov 17, 2026</td><td class="who lead">Schapiro</td><td class="who">Shaiman</td></tr>
-      <tr class="p0"><td class="n">11</td><td class="date">Nov 24, 2026</td><td class="who lead">Brown</td><td class="who">Tzur</td></tr>
-      <tr class="p1"><td class="n">12</td><td class="date">Dec 1, 2026</td><td class="who lead">Schapiro</td><td class="who">Natanelli</td></tr>
-      <tr class="p0"><td class="n">13</td><td class="date">Dec 15, 2026</td><td class="who lead">Brown</td><td class="who">Schreiber</td></tr>
-      <tr class="p1"><td class="n">14</td><td class="date">Dec 22, 2026</td><td class="who lead">Schapiro</td><td class="who">Shaiman</td></tr>
-      <tr class="p0"><td class="n">15</td><td class="date">Dec 29, 2026</td><td class="who lead">Brown</td><td class="who">Tzur</td></tr>
-      <tr class="p1"><td class="n">16</td><td class="date">Jan 5, 2027</td><td class="who lead">Schapiro</td><td class="who">Natanelli</td></tr>
-      <tr class="p0"><td class="n">17</td><td class="date">Jan 12, 2027</td><td class="who lead">Brown</td><td class="who">Schreiber</td></tr>
+      <tr><td class="n">1</td><td class="date">Sep 8, 2026</td><td class="who lead p0">Brown</td><td class="who">Tzur</td></tr>
+      <tr><td class="n">2</td><td class="date">Sep 15, 2026</td><td class="who">Schreiber</td><td class="who">Natanelli</td></tr>
+      <tr><td class="n">3</td><td class="date">Sep 22, 2026</td><td class="who lead p0">Brown</td><td class="who">Schreiber</td></tr>
+      <tr><td class="n">4</td><td class="date">Oct 6, 2026</td><td class="who lead p1">Schapiro</td><td class="who">Shaiman</td></tr>
+      <tr><td class="n">5</td><td class="date">Oct 13, 2026</td><td class="who">Shaiman</td><td class="who">Tzur</td></tr>
+      <tr><td class="n">6</td><td class="date">Oct 20, 2026</td><td class="who lead p1">Schapiro</td><td class="who">Natanelli</td></tr>
+      <tr><td class="n">7</td><td class="date">Oct 27, 2026</td><td class="who lead p0">Brown</td><td class="who">Schreiber</td></tr>
+      <tr><td class="n">8</td><td class="date">Nov 3, 2026</td><td class="who">Tzur</td><td class="who">Shaiman</td></tr>
+      <tr><td class="n">9</td><td class="date">Nov 10, 2026</td><td class="who lead p0">Brown</td><td class="who">Tzur</td></tr>
+      <tr><td class="n">10</td><td class="date">Nov 17, 2026</td><td class="who lead p1">Schapiro</td><td class="who">Natanelli</td></tr>
+      <tr><td class="n">11</td><td class="date">Nov 24, 2026</td><td class="who">Natanelli</td><td class="who">Schreiber</td></tr>
+      <tr><td class="n">12</td><td class="date">Dec 1, 2026</td><td class="who lead p1">Schapiro</td><td class="who">Shaiman</td></tr>
+      <tr><td class="n">13</td><td class="date">Dec 15, 2026</td><td class="who lead p0">Brown</td><td class="who">Tzur</td></tr>
+      <tr><td class="n">14</td><td class="date">Dec 22, 2026</td><td class="who">Schreiber</td><td class="who">Natanelli</td></tr>
+      <tr><td class="n">15</td><td class="date">Dec 29, 2026</td><td class="who lead p0">Brown</td><td class="who">Schreiber</td></tr>
+      <tr><td class="n">16</td><td class="date">Jan 5, 2027</td><td class="who lead p1">Schapiro</td><td class="who">Shaiman</td></tr>
+      <tr><td class="n">17</td><td class="date">Jan 12, 2027</td><td class="who">Shaiman</td><td class="who">Tzur</td></tr>
       </tbody>
     </table>
   </section>
 
   <section>
-    <h2>Pickups each</h2>
-    <div class="tally">
-      <div class="chip"><span class="cw">Schreiber</span><span class="cn">5 pickups</span></div>
-      <div class="chip"><span class="cw">Shaiman</span><span class="cn">4 pickups</span></div>
-      <div class="chip"><span class="cw">Tzur</span><span class="cn">4 pickups</span></div>
-      <div class="chip"><span class="cw">Natanelli</span><span class="cn">4 pickups</span></div>
+    <h2>Legs each &mdash; there &middot; back &middot; <b>total</b></h2>
+    <div class="tally six">
+      <div class="chip"><span class="cw">Schapiro</span><span class="cn">5 &middot; 0 &middot; <b>5</b></span></div>
+      <div class="chip"><span class="cw">Brown</span><span class="cn">6 &middot; 0 &middot; <b>6</b></span></div>
+      <div class="chip"><span class="cw">Schreiber</span><span class="cn">2 &middot; 4 &middot; <b>6</b></span></div>
+      <div class="chip"><span class="cw">Shaiman</span><span class="cn">2 &middot; 4 &middot; <b>6</b></span></div>
+      <div class="chip"><span class="cw">Tzur</span><span class="cn">1 &middot; 5 &middot; <b>6</b></span></div>
+      <div class="chip"><span class="cw">Natanelli</span><span class="cn">1 &middot; 4 &middot; <b>5</b></span></div>
     </div>
   </section>
 
   <footer>
-    <p><strong>How the rotation runs.</strong> Drop-offs alternate between Schapiro
-      and Brown straight down the list. Pickups cycle through the other four in order,
-      coming back around every four Tuesdays &mdash; seventeen doesn&rsquo;t divide by
-      four, so Schreiber takes the one extra as first in the cycle.</p>
+    <p><strong>Even shares.</strong> Thirty-four legs across six families is 5.67
+      each, so four take six and two take five. Nobody drives both legs of the
+      same day.</p>
     <p><strong>Swapping.</strong> Trade directly with the other family and let
       everyone know &mdash; the printed order stays as is.</p>
   </footer>
