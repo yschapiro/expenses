@@ -53,7 +53,7 @@ Dates to be filled in; drivers are already assigned so the totals stay even.
 | OG1 | _TBD_ | **Bonan** | **Schapiro** |
 | OG2 | _TBD_ | **Kuritsky** | **Laufer** |
 | OG3 | _TBD_ | **Berkowitz** | **Bonan** |
-| OG4 | _TBD_ | **Schapiro** | **Kuritsky** |
+| OG4 | _TBD_ | **Laufer** | **Berkowitz** |
 
 ## Closed dates (no session)
 
@@ -75,10 +75,10 @@ Dates to be filled in; drivers are already assigned so the totals stay even.
 
 | Driver | There | Back | Total |
 |--------|-------|------|-------|
-| Schapiro | 8 | 7 | 15 |
-| Kuritsky | 7 | 8 | 15 |
-| Laufer | 7 | 7 | 14 |
-| Berkowitz | 7 | 7 | 14 |
+| Schapiro | 7 | 7 | 14 |
+| Kuritsky | 7 | 7 | 14 |
+| Laufer | 8 | 7 | 15 |
+| Berkowitz | 7 | 8 | 15 |
 | Bonan | 7 | 7 | 14 |
 
 Spread: 14-15 legs (even within 1 leg).

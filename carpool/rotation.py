@@ -46,6 +46,16 @@ BLOCKED = {
 # rotation stays even once dates are filled in.
 OPEN_GYM_COUNT = 4
 
+# Manual reassignments applied after the round-robin deal, keyed by slot:
+# an ISO date for a team session, or "OG1".."OG4" for an open gym trip.
+#
+# The leg count doesn't divide evenly by five, so two families always carry
+# one extra leg. Overriding the last slot is what decides which two - it
+# moves the extra pair without disturbing any dated session above it.
+OVERRIDES = {
+    "OG4": ("Laufer", "Berkowitz"),   # keeps Schapiro and Kuritsky at 14
+}
+
 # -----------------------------------------------------------------------
 
 
@@ -68,15 +78,24 @@ def main():
     sessions = [d for d in opened if d not in blocked]
     sessions += [None] * OPEN_GYM_COUNT           # open gym, dates TBD
 
-    there = {n: 0 for n in DRIVERS}
-    back = {n: 0 for n in DRIVERS}
-    plan = []
+    plan, gym_i = [], 0
     for k, d in enumerate(sessions):
         a = DRIVERS[(2 * k) % len(DRIVERS)]
         b = DRIVERS[(2 * k + 1) % len(DRIVERS)]
+        if d is None:
+            gym_i += 1
+            label = f"OG{gym_i}"
+        else:
+            label = d.isoformat()
+        if label in OVERRIDES:
+            a, b = OVERRIDES[label]
+        plan.append((d, a, b))
+
+    there = {n: 0 for n in DRIVERS}
+    back = {n: 0 for n in DRIVERS}
+    for _, a, b in plan:
         there[a] += 1
         back[b] += 1
-        plan.append((d, a, b))
 
     dated = [p for p in plan if p[0] is not None]
     gym = [p for p in plan if p[0] is None]
