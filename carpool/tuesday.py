@@ -1,24 +1,23 @@
 #!/usr/bin/env python3
 """Two linked Tuesday carpools, rendered as separate one-page sheets.
 
-Carpool 1 - Schapiro and Brown only. They alternate sessions; whoever is up
-that week drives both ways.
+Carpool 1 - Schapiro and Brown only. They alternate sessions and whoever is up
+drives both ways. Seventeen Tuesdays won't halve, so the opening Tuesday is
+split instead - Brown out, Schapiro back - and the remaining sixteen alternate
+whole. That lands both families on exactly 17 of the 34 legs.
 
-Carpool 2 - Schapiro, Brown, Schreiber, Shaiman, Tzur and Natanelli. It is
-its own carpool and every family carries the same share of it: 34 legs over
-six families is 5.67, so four take 6 and two take 5.
+Carpool 2 - Schapiro, Brown, Schreiber, Shaiman, Tzur and Natanelli. It is its
+own carpool and every family carries the same share of it: 34 legs over six
+families is 5.67, so four take 6 and two take 5.
 
-Schapiro and Brown only ever take the DROP-OFF leg, and only on a day they
-already hold Carpool 1 - they are making that drive anyway. That runs one way
-only: holding Carpool 1 does not oblige them to take the group. Six dates are
-spread through the season where one of the other four takes the drop-off
-instead, which is what brings the pair down to an even share.
+Schapiro and Brown only ever take the DROP-OFF leg there, and only on a day
+they are already driving out for Carpool 1. That runs one way only: holding
+Carpool 1 does not oblige them to take the group. Six dates spread through the
+season hand the drop-off to one of the other four instead, which is what brings
+the pair down to an even share. Schapiro takes the smaller of the two at 5.
 
-Schapiro takes the smaller share of both carpools - 8 of the 17 Carpool 1
-Tuesdays to Brown's 9, and 5 of the 34 Carpool 2 legs.
-
-The two sheets go to different people, so each is written and rendered on its
-own and neither describes the other's internals.
+The two sheets go to different people, so each is rendered on its own and
+neither describes the other's internals.
 
 Run:  python3 carpool/tuesday.py   ->  writes the two HTML files
 """
@@ -37,12 +36,16 @@ DATES = [
     (2027, 1, [5, 12]),
 ]
 
-PAIR = ["Brown", "Schapiro"]        # order sets who carries the odd session
+PAIR = ["Brown", "Schapiro"]        # carpool 1, alternating in this order
 OTHERS = ["Schreiber", "Shaiman", "Tzur", "Natanelli"]
 
 # Pickups cycle in this order. Starting on Tzur is what lands the one extra
 # pickup there rather than on a family that already has two drop-offs.
 BACK_ORDER = ["Tzur", "Natanelli", "Schreiber", "Shaiman"]
+
+# The opening Tuesday is shared rather than driven whole by one family, which
+# is what makes carpool 1 come out exactly even over an odd number of sessions.
+SPLIT_FIRST = True
 
 OUT = Path(__file__).parent
 
@@ -89,6 +92,7 @@ CSS = """
     font-family:"Archivo",system-ui,sans-serif;
     font-weight:600;font-size:.98rem;margin:0 0 10px;
   }
+  h2 b{font-weight:600}
 
   table{width:100%;border-collapse:collapse}
   thead th{
@@ -116,14 +120,21 @@ CSS = """
     font-family:"Archivo",system-ui,sans-serif;
     font-weight:600;font-size:1.02rem;letter-spacing:-.008em;
   }
-  /* the alternating half of the pair, marked so the pattern reads at a glance */
-  tr.p0 td.date{box-shadow:inset 3px 0 0 var(--b)}
-  tr.p1 td.date{box-shadow:inset 3px 0 0 var(--a)}
-  tr.p0 td.lead{color:var(--b)}
-  tr.p1 td.lead{color:var(--a)}
-  /* sheet 2 marks the pair on the cell - only they appear in the there column */
-  td.lead.p0{color:var(--b)}
-  td.lead.p1{color:var(--a)}
+  /* the pair are colour-coded so the alternation reads without counting */
+  td.p0{color:var(--b)}
+  td.p1{color:var(--a)}
+  tr.w0 td.date{box-shadow:inset 3px 0 0 var(--b)}
+  tr.w1 td.date{box-shadow:inset 3px 0 0 var(--a)}
+  /* the one shared Tuesday gets a stripe of both */
+  tr.shared td.date{
+    background:linear-gradient(to bottom, var(--b) 0 50%, var(--a) 50%)
+               left/3px 100% no-repeat;
+  }
+  td.tag{
+    width:52px;text-align:right;white-space:nowrap;
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);
+  }
 
   .tally{display:flex;flex-wrap:wrap;gap:8px}
   .tally.six{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
@@ -141,7 +152,6 @@ CSS = """
     font-size:11px;color:var(--ink-2);font-variant-numeric:tabular-nums;
   }
   .chip .cn b{color:var(--ink);font-weight:500}
-  h2 b{font-weight:600}
   .chip.k0{border-color:var(--b);background:var(--b-soft)}
   .chip.k1{border-color:var(--a);background:var(--a-soft)}
 
@@ -180,48 +190,63 @@ def build():
     days.sort()
     n = len(days)
 
-    # Carpool 1: the pair alternates straight down the list.
-    lead = [PAIR[i % 2] for i in range(n)]
+    # Carpool 1: (there, back) per Tuesday. The pair alternates whole days,
+    # except the opener, which they share so the season halves exactly.
+    c1 = [(PAIR[i % 2], PAIR[i % 2]) for i in range(n)]
+    if SPLIT_FIRST:
+        c1[0] = (PAIR[0], PAIR[1])
 
-    # Carpool 2 drop-offs. The pair takes them on their own Carpool 1 days,
-    # except on the handful of dates handed to the other four - without those
-    # the pair would carry all 17 and everyone's share would be lopsided.
+    # Carpool 2 drop-offs: whoever is already driving out for carpool 1, minus
+    # the dates handed to the other four - without those the pair would carry
+    # all 17 and everyone's share would be lopsided.
     handover = spread(n, 6)
-    there = list(lead)
+    there = [t for t, _ in c1]
     for k, i in enumerate(handover):
         there[i] = OTHERS[k % len(OTHERS)]
 
     # Carpool 2 pickups: only the other four, cycling.
     back = [BACK_ORDER[i % len(BACK_ORDER)] for i in range(n)]
 
-    families = PAIR + OTHERS
-    legs = {f: [there.count(f), back.count(f)] for f in families}
+    c1_legs = {p: sum(leg.count(p) for leg in c1) for p in PAIR}
+    c2_legs = {f: [there.count(f), back.count(f)] for f in PAIR + OTHERS}
 
-    # The rules this schedule has to satisfy, checked rather than assumed.
+    # The rules each schedule has to satisfy, checked rather than assumed.
+    assert max(c1_legs.values()) - min(c1_legs.values()) == 0, \
+        f"carpool 1 not even: {c1_legs}"
     assert all(t != b for t, b in zip(there, back)), "same family both legs"
     assert not any(p in back for p in PAIR), "pair must never take a pickup"
-    for p in PAIR:
-        assert all(lead[i] == p for i, w in enumerate(there) if w == p), \
-            f"{p} drops off on a day they do not hold carpool 1"
-    tot = {f: sum(v) for f, v in legs.items()}
-    assert max(tot.values()) - min(tot.values()) <= 1, f"uneven: {tot}"
+    for i, w in enumerate(there):
+        assert w not in PAIR or c1[i][0] == w, \
+            f"{w} drops off on {days[i]} without driving out for carpool 1"
+    tot = {f: sum(v) for f, v in c2_legs.items()}
+    assert max(tot.values()) - min(tot.values()) <= 1, f"carpool 2 uneven: {tot}"
     assert tot["Schapiro"] == min(tot.values()), f"Schapiro not lowest: {tot}"
 
-    return days, lead, there, back, legs
+    return days, c1, there, back, c1_legs, c2_legs
 
 
-def sheet_one(days, lead):
+def name_cell(name, extra=""):
+    cls = f"who p{PAIR.index(name)}" if name in PAIR else "who"
+    return f'<td class="{cls}{extra}">{html.escape(name)}</td>'
+
+
+def sheet_one(days, c1, legs):
     """Carpool 1 - goes to Brown."""
-    n = {p: lead.count(p) for p in PAIR}
-    rows = "\n".join(
-        f'      <tr class="p{PAIR.index(w)}"><td class="n">{i}</td>'
-        f'<td class="date">{fmt(d)}</td>'
-        f'<td class="who lead">{html.escape(w)}</td></tr>'
-        for i, (d, w) in enumerate(zip(days, lead), 1)
-    )
+    rows = []
+    for i, (d, (t, b)) in enumerate(zip(days, c1), 1):
+        shared = t != b
+        cls = "shared" if shared else f"w{PAIR.index(t)}"
+        tag = "shared" if shared else ""   # the two columns already say "both ways"
+        rows.append(
+            f'      <tr class="{cls}"><td class="n">{i}</td>'
+            f'<td class="date">{fmt(d)}</td>'
+            f'{name_cell(t)}{name_cell(b)}<td class="tag">{tag}</td></tr>'
+        )
+    full = {p: sum(1 for t, b in c1 if t == b == p) for p in PAIR}
     chips = "\n".join(
         f'      <div class="chip k{PAIR.index(p)}"><span class="cw">{p}</span>'
-        f'<span class="cn">{n[p]} of {len(days)} Tuesdays</span></div>'
+        f'<span class="cn"><b>{legs[p]}</b> legs &middot; {full[p]} whole Tuesdays'
+        f'{" + 1 leg" if legs[p] > full[p] * 2 else ""}</span></div>'
         for p in PAIR
     )
     return f"""{HEAD.format(title="Tuesday Carpool &mdash; Schapiro &amp; Brown", css=CSS)}
@@ -229,37 +254,38 @@ def sheet_one(days, lead):
   <header>
     <p class="eyebrow">Tuesdays &middot; {fmt(days[0])} &ndash; {fmt(days[-1])}</p>
     <h1>Carpool &mdash; Schapiro &amp; Brown</h1>
-    <p class="lede">Just the two of us. We alternate week to week, and whoever is
-      up that Tuesday drives <b>both ways</b> &mdash; there in the morning and back
-      afterwards. No splitting the day.</p>
+    <p class="lede">Just the two of us. We alternate week to week and whoever is up
+      drives <b>both ways</b>. The one exception is the opening Tuesday, which we
+      <b>split</b> &mdash; Brown out, Schapiro back &mdash; so seventeen Tuesdays come
+      out dead even.</p>
     <div class="meta">
       <span><b>{len(days)}</b> Tuesdays</span>
-      <span>Brown <b>{n['Brown']}</b></span>
-      <span>Schapiro <b>{n['Schapiro']}</b></span>
-      <span>Alternating, Brown first</span>
+      <span><b>{len(days) * 2}</b> legs</span>
+      <span>Brown <b>{legs['Brown']}</b></span>
+      <span>Schapiro <b>{legs['Schapiro']}</b></span>
     </div>
   </header>
 
   <section>
     <table>
-      <thead><tr><th></th><th>Date</th><th>Driving &mdash; both ways</th></tr></thead>
+      <thead><tr><th></th><th>Date</th><th>Drive there</th><th>Drive back</th><th></th></tr></thead>
       <tbody>
-{rows}
+{chr(10).join(rows)}
       </tbody>
     </table>
   </section>
 
   <section>
-    <h2>Tuesdays each</h2>
+    <h2>The split</h2>
     <div class="tally">
 {chips}
     </div>
   </section>
 
   <footer>
-    <p><strong>Why the counts differ.</strong> Seventeen Tuesdays doesn&rsquo;t split
-      in two, so one of us takes the extra. Brown starts, which puts the ninth on
-      Brown and the eighth on Schapiro.</p>
+    <p><strong>Why the opener is shared.</strong> Seventeen Tuesdays don&rsquo;t
+      halve. Splitting the first one and alternating whole days after it leaves us
+      on {legs['Brown']} legs each &mdash; exactly even, no odd Tuesday to argue over.</p>
     <p><strong>Swapping.</strong> Trade a date between the two of you whenever it
       helps; the printed order doesn&rsquo;t need to change.</p>
   </footer>
@@ -270,14 +296,9 @@ def sheet_one(days, lead):
 def sheet_two(days, there, back, legs):
     """Carpool 2 - goes to Schreiber, Shaiman, Tzur and Natanelli."""
     families = PAIR[::-1] + OTHERS
-
-    def cell(name):
-        cls = f"who lead p{PAIR.index(name)}" if name in PAIR else "who"
-        return f'<td class="{cls}">{html.escape(name)}</td>'
-
     rows = "\n".join(
         f'      <tr><td class="n">{i}</td><td class="date">{fmt(d)}</td>'
-        f'{cell(t)}{cell(b)}</tr>'
+        f'{name_cell(t)}{name_cell(b)}</tr>'
         for i, (d, t, b) in enumerate(zip(days, there, back), 1)
     )
     chips = "\n".join(
@@ -331,22 +352,23 @@ def sheet_two(days, there, back, legs):
 
 
 def main():
-    days, lead, there, back, legs = build()
+    days, c1, there, back, c1_legs, c2_legs = build()
 
-    (OUT / "tuesday-carpool-1.html").write_text(sheet_one(days, lead))
-    (OUT / "tuesday-carpool-2.html").write_text(sheet_two(days, there, back, legs))
+    (OUT / "tuesday-carpool-1.html").write_text(sheet_one(days, c1, c1_legs))
+    (OUT / "tuesday-carpool-2.html").write_text(sheet_two(days, there, back, c2_legs))
 
     print(f"{len(days)} Tuesdays: {fmt(days[0])} - {fmt(days[-1])}\n")
-    print(f"{'Date':<15}{'Carpool 1':<11}{'C2 there':<11}{'C2 back':<11}")
-    for d, w, t, b in zip(days, lead, there, back):
-        mark = "" if t == w else "   <- pair sits out the drop-off"
-        print(f"{fmt(d):<15}{w:<11}{t:<11}{b:<11}{mark}")
-    print("\nCarpool 1")
+    print(f"{'Date':<15}{'C1 there':<11}{'C1 back':<11}{'C2 there':<11}{'C2 back':<11}")
+    for d, (t1, b1), t2, b2 in zip(days, c1, there, back):
+        note = "   <- shared" if t1 != b1 else ("   <- pair sits out drop-off"
+                                                if t2 != t1 else "")
+        print(f"{fmt(d):<15}{t1:<11}{b1:<11}{t2:<11}{b2:<11}{note}")
+    print("\nCarpool 1 (34 legs)")
     for p in PAIR:
-        print(f"  {p:<11} {lead.count(p)} of {len(days)} Tuesdays")
-    print("\nCarpool 2")
+        print(f"  {p:<11} {c1_legs[p]} legs")
+    print("\nCarpool 2 (34 legs)")
     for f in PAIR + OTHERS:
-        t, b = legs[f]
+        t, b = c2_legs[f]
         print(f"  {f:<11} {t} there + {b} back = {t + b} legs")
 
 

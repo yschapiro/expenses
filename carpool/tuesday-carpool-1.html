@@ -43,6 +43,7 @@
     font-family:"Archivo",system-ui,sans-serif;
     font-weight:600;font-size:.98rem;margin:0 0 10px;
   }
+  h2 b{font-weight:600}
 
   table{width:100%;border-collapse:collapse}
   thead th{
@@ -70,14 +71,21 @@
     font-family:"Archivo",system-ui,sans-serif;
     font-weight:600;font-size:1.02rem;letter-spacing:-.008em;
   }
-  /* the alternating half of the pair, marked so the pattern reads at a glance */
-  tr.p0 td.date{box-shadow:inset 3px 0 0 var(--b)}
-  tr.p1 td.date{box-shadow:inset 3px 0 0 var(--a)}
-  tr.p0 td.lead{color:var(--b)}
-  tr.p1 td.lead{color:var(--a)}
-  /* sheet 2 marks the pair on the cell - only they appear in the there column */
-  td.lead.p0{color:var(--b)}
-  td.lead.p1{color:var(--a)}
+  /* the pair are colour-coded so the alternation reads without counting */
+  td.p0{color:var(--b)}
+  td.p1{color:var(--a)}
+  tr.w0 td.date{box-shadow:inset 3px 0 0 var(--b)}
+  tr.w1 td.date{box-shadow:inset 3px 0 0 var(--a)}
+  /* the one shared Tuesday gets a stripe of both */
+  tr.shared td.date{
+    background:linear-gradient(to bottom, var(--b) 0 50%, var(--a) 50%)
+               left/3px 100% no-repeat;
+  }
+  td.tag{
+    width:52px;text-align:right;white-space:nowrap;
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);
+  }
 
   .tally{display:flex;flex-wrap:wrap;gap:8px}
   .tally.six{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
@@ -95,7 +103,6 @@
     font-size:11px;color:var(--ink-2);font-variant-numeric:tabular-nums;
   }
   .chip .cn b{color:var(--ink);font-weight:500}
-  h2 b{font-weight:600}
   .chip.k0{border-color:var(--b);background:var(--b-soft)}
   .chip.k1{border-color:var(--a);background:var(--a-soft)}
 
@@ -116,54 +123,55 @@
   <header>
     <p class="eyebrow">Tuesdays &middot; Sep 8, 2026 &ndash; Jan 12, 2027</p>
     <h1>Carpool &mdash; Schapiro &amp; Brown</h1>
-    <p class="lede">Just the two of us. We alternate week to week, and whoever is
-      up that Tuesday drives <b>both ways</b> &mdash; there in the morning and back
-      afterwards. No splitting the day.</p>
+    <p class="lede">Just the two of us. We alternate week to week and whoever is up
+      drives <b>both ways</b>. The one exception is the opening Tuesday, which we
+      <b>split</b> &mdash; Brown out, Schapiro back &mdash; so seventeen Tuesdays come
+      out dead even.</p>
     <div class="meta">
       <span><b>17</b> Tuesdays</span>
-      <span>Brown <b>9</b></span>
-      <span>Schapiro <b>8</b></span>
-      <span>Alternating, Brown first</span>
+      <span><b>34</b> legs</span>
+      <span>Brown <b>17</b></span>
+      <span>Schapiro <b>17</b></span>
     </div>
   </header>
 
   <section>
     <table>
-      <thead><tr><th></th><th>Date</th><th>Driving &mdash; both ways</th></tr></thead>
+      <thead><tr><th></th><th>Date</th><th>Drive there</th><th>Drive back</th><th></th></tr></thead>
       <tbody>
-      <tr class="p0"><td class="n">1</td><td class="date">Sep 8, 2026</td><td class="who lead">Brown</td></tr>
-      <tr class="p1"><td class="n">2</td><td class="date">Sep 15, 2026</td><td class="who lead">Schapiro</td></tr>
-      <tr class="p0"><td class="n">3</td><td class="date">Sep 22, 2026</td><td class="who lead">Brown</td></tr>
-      <tr class="p1"><td class="n">4</td><td class="date">Oct 6, 2026</td><td class="who lead">Schapiro</td></tr>
-      <tr class="p0"><td class="n">5</td><td class="date">Oct 13, 2026</td><td class="who lead">Brown</td></tr>
-      <tr class="p1"><td class="n">6</td><td class="date">Oct 20, 2026</td><td class="who lead">Schapiro</td></tr>
-      <tr class="p0"><td class="n">7</td><td class="date">Oct 27, 2026</td><td class="who lead">Brown</td></tr>
-      <tr class="p1"><td class="n">8</td><td class="date">Nov 3, 2026</td><td class="who lead">Schapiro</td></tr>
-      <tr class="p0"><td class="n">9</td><td class="date">Nov 10, 2026</td><td class="who lead">Brown</td></tr>
-      <tr class="p1"><td class="n">10</td><td class="date">Nov 17, 2026</td><td class="who lead">Schapiro</td></tr>
-      <tr class="p0"><td class="n">11</td><td class="date">Nov 24, 2026</td><td class="who lead">Brown</td></tr>
-      <tr class="p1"><td class="n">12</td><td class="date">Dec 1, 2026</td><td class="who lead">Schapiro</td></tr>
-      <tr class="p0"><td class="n">13</td><td class="date">Dec 15, 2026</td><td class="who lead">Brown</td></tr>
-      <tr class="p1"><td class="n">14</td><td class="date">Dec 22, 2026</td><td class="who lead">Schapiro</td></tr>
-      <tr class="p0"><td class="n">15</td><td class="date">Dec 29, 2026</td><td class="who lead">Brown</td></tr>
-      <tr class="p1"><td class="n">16</td><td class="date">Jan 5, 2027</td><td class="who lead">Schapiro</td></tr>
-      <tr class="p0"><td class="n">17</td><td class="date">Jan 12, 2027</td><td class="who lead">Brown</td></tr>
+      <tr class="shared"><td class="n">1</td><td class="date">Sep 8, 2026</td><td class="who p0">Brown</td><td class="who p1">Schapiro</td><td class="tag">shared</td></tr>
+      <tr class="w1"><td class="n">2</td><td class="date">Sep 15, 2026</td><td class="who p1">Schapiro</td><td class="who p1">Schapiro</td><td class="tag"></td></tr>
+      <tr class="w0"><td class="n">3</td><td class="date">Sep 22, 2026</td><td class="who p0">Brown</td><td class="who p0">Brown</td><td class="tag"></td></tr>
+      <tr class="w1"><td class="n">4</td><td class="date">Oct 6, 2026</td><td class="who p1">Schapiro</td><td class="who p1">Schapiro</td><td class="tag"></td></tr>
+      <tr class="w0"><td class="n">5</td><td class="date">Oct 13, 2026</td><td class="who p0">Brown</td><td class="who p0">Brown</td><td class="tag"></td></tr>
+      <tr class="w1"><td class="n">6</td><td class="date">Oct 20, 2026</td><td class="who p1">Schapiro</td><td class="who p1">Schapiro</td><td class="tag"></td></tr>
+      <tr class="w0"><td class="n">7</td><td class="date">Oct 27, 2026</td><td class="who p0">Brown</td><td class="who p0">Brown</td><td class="tag"></td></tr>
+      <tr class="w1"><td class="n">8</td><td class="date">Nov 3, 2026</td><td class="who p1">Schapiro</td><td class="who p1">Schapiro</td><td class="tag"></td></tr>
+      <tr class="w0"><td class="n">9</td><td class="date">Nov 10, 2026</td><td class="who p0">Brown</td><td class="who p0">Brown</td><td class="tag"></td></tr>
+      <tr class="w1"><td class="n">10</td><td class="date">Nov 17, 2026</td><td class="who p1">Schapiro</td><td class="who p1">Schapiro</td><td class="tag"></td></tr>
+      <tr class="w0"><td class="n">11</td><td class="date">Nov 24, 2026</td><td class="who p0">Brown</td><td class="who p0">Brown</td><td class="tag"></td></tr>
+      <tr class="w1"><td class="n">12</td><td class="date">Dec 1, 2026</td><td class="who p1">Schapiro</td><td class="who p1">Schapiro</td><td class="tag"></td></tr>
+      <tr class="w0"><td class="n">13</td><td class="date">Dec 15, 2026</td><td class="who p0">Brown</td><td class="who p0">Brown</td><td class="tag"></td></tr>
+      <tr class="w1"><td class="n">14</td><td class="date">Dec 22, 2026</td><td class="who p1">Schapiro</td><td class="who p1">Schapiro</td><td class="tag"></td></tr>
+      <tr class="w0"><td class="n">15</td><td class="date">Dec 29, 2026</td><td class="who p0">Brown</td><td class="who p0">Brown</td><td class="tag"></td></tr>
+      <tr class="w1"><td class="n">16</td><td class="date">Jan 5, 2027</td><td class="who p1">Schapiro</td><td class="who p1">Schapiro</td><td class="tag"></td></tr>
+      <tr class="w0"><td class="n">17</td><td class="date">Jan 12, 2027</td><td class="who p0">Brown</td><td class="who p0">Brown</td><td class="tag"></td></tr>
       </tbody>
     </table>
   </section>
 
   <section>
-    <h2>Tuesdays each</h2>
+    <h2>The split</h2>
     <div class="tally">
-      <div class="chip k0"><span class="cw">Brown</span><span class="cn">9 of 17 Tuesdays</span></div>
-      <div class="chip k1"><span class="cw">Schapiro</span><span class="cn">8 of 17 Tuesdays</span></div>
+      <div class="chip k0"><span class="cw">Brown</span><span class="cn"><b>17</b> legs &middot; 8 whole Tuesdays + 1 leg</span></div>
+      <div class="chip k1"><span class="cw">Schapiro</span><span class="cn"><b>17</b> legs &middot; 8 whole Tuesdays + 1 leg</span></div>
     </div>
   </section>
 
   <footer>
-    <p><strong>Why the counts differ.</strong> Seventeen Tuesdays doesn&rsquo;t split
-      in two, so one of us takes the extra. Brown starts, which puts the ninth on
-      Brown and the eighth on Schapiro.</p>
+    <p><strong>Why the opener is shared.</strong> Seventeen Tuesdays don&rsquo;t
+      halve. Splitting the first one and alternating whole days after it leaves us
+      on 17 legs each &mdash; exactly even, no odd Tuesday to argue over.</p>
     <p><strong>Swapping.</strong> Trade a date between the two of you whenever it
       helps; the printed order doesn&rsquo;t need to change.</p>
   </footer>

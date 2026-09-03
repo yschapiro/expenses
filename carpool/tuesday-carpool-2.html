@@ -43,6 +43,7 @@
     font-family:"Archivo",system-ui,sans-serif;
     font-weight:600;font-size:.98rem;margin:0 0 10px;
   }
+  h2 b{font-weight:600}
 
   table{width:100%;border-collapse:collapse}
   thead th{
@@ -70,14 +71,21 @@
     font-family:"Archivo",system-ui,sans-serif;
     font-weight:600;font-size:1.02rem;letter-spacing:-.008em;
   }
-  /* the alternating half of the pair, marked so the pattern reads at a glance */
-  tr.p0 td.date{box-shadow:inset 3px 0 0 var(--b)}
-  tr.p1 td.date{box-shadow:inset 3px 0 0 var(--a)}
-  tr.p0 td.lead{color:var(--b)}
-  tr.p1 td.lead{color:var(--a)}
-  /* sheet 2 marks the pair on the cell - only they appear in the there column */
-  td.lead.p0{color:var(--b)}
-  td.lead.p1{color:var(--a)}
+  /* the pair are colour-coded so the alternation reads without counting */
+  td.p0{color:var(--b)}
+  td.p1{color:var(--a)}
+  tr.w0 td.date{box-shadow:inset 3px 0 0 var(--b)}
+  tr.w1 td.date{box-shadow:inset 3px 0 0 var(--a)}
+  /* the one shared Tuesday gets a stripe of both */
+  tr.shared td.date{
+    background:linear-gradient(to bottom, var(--b) 0 50%, var(--a) 50%)
+               left/3px 100% no-repeat;
+  }
+  td.tag{
+    width:52px;text-align:right;white-space:nowrap;
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);
+  }
 
   .tally{display:flex;flex-wrap:wrap;gap:8px}
   .tally.six{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
@@ -95,7 +103,6 @@
     font-size:11px;color:var(--ink-2);font-variant-numeric:tabular-nums;
   }
   .chip .cn b{color:var(--ink);font-weight:500}
-  h2 b{font-weight:600}
   .chip.k0{border-color:var(--b);background:var(--b-soft)}
   .chip.k1{border-color:var(--a);background:var(--a-soft)}
 
@@ -132,22 +139,22 @@
     <table>
       <thead><tr><th></th><th>Date</th><th>Drive there</th><th>Drive back</th></tr></thead>
       <tbody>
-      <tr><td class="n">1</td><td class="date">Sep 8, 2026</td><td class="who lead p0">Brown</td><td class="who">Tzur</td></tr>
+      <tr><td class="n">1</td><td class="date">Sep 8, 2026</td><td class="who p0">Brown</td><td class="who">Tzur</td></tr>
       <tr><td class="n">2</td><td class="date">Sep 15, 2026</td><td class="who">Schreiber</td><td class="who">Natanelli</td></tr>
-      <tr><td class="n">3</td><td class="date">Sep 22, 2026</td><td class="who lead p0">Brown</td><td class="who">Schreiber</td></tr>
-      <tr><td class="n">4</td><td class="date">Oct 6, 2026</td><td class="who lead p1">Schapiro</td><td class="who">Shaiman</td></tr>
+      <tr><td class="n">3</td><td class="date">Sep 22, 2026</td><td class="who p0">Brown</td><td class="who">Schreiber</td></tr>
+      <tr><td class="n">4</td><td class="date">Oct 6, 2026</td><td class="who p1">Schapiro</td><td class="who">Shaiman</td></tr>
       <tr><td class="n">5</td><td class="date">Oct 13, 2026</td><td class="who">Shaiman</td><td class="who">Tzur</td></tr>
-      <tr><td class="n">6</td><td class="date">Oct 20, 2026</td><td class="who lead p1">Schapiro</td><td class="who">Natanelli</td></tr>
-      <tr><td class="n">7</td><td class="date">Oct 27, 2026</td><td class="who lead p0">Brown</td><td class="who">Schreiber</td></tr>
+      <tr><td class="n">6</td><td class="date">Oct 20, 2026</td><td class="who p1">Schapiro</td><td class="who">Natanelli</td></tr>
+      <tr><td class="n">7</td><td class="date">Oct 27, 2026</td><td class="who p0">Brown</td><td class="who">Schreiber</td></tr>
       <tr><td class="n">8</td><td class="date">Nov 3, 2026</td><td class="who">Tzur</td><td class="who">Shaiman</td></tr>
-      <tr><td class="n">9</td><td class="date">Nov 10, 2026</td><td class="who lead p0">Brown</td><td class="who">Tzur</td></tr>
-      <tr><td class="n">10</td><td class="date">Nov 17, 2026</td><td class="who lead p1">Schapiro</td><td class="who">Natanelli</td></tr>
+      <tr><td class="n">9</td><td class="date">Nov 10, 2026</td><td class="who p0">Brown</td><td class="who">Tzur</td></tr>
+      <tr><td class="n">10</td><td class="date">Nov 17, 2026</td><td class="who p1">Schapiro</td><td class="who">Natanelli</td></tr>
       <tr><td class="n">11</td><td class="date">Nov 24, 2026</td><td class="who">Natanelli</td><td class="who">Schreiber</td></tr>
-      <tr><td class="n">12</td><td class="date">Dec 1, 2026</td><td class="who lead p1">Schapiro</td><td class="who">Shaiman</td></tr>
-      <tr><td class="n">13</td><td class="date">Dec 15, 2026</td><td class="who lead p0">Brown</td><td class="who">Tzur</td></tr>
+      <tr><td class="n">12</td><td class="date">Dec 1, 2026</td><td class="who p1">Schapiro</td><td class="who">Shaiman</td></tr>
+      <tr><td class="n">13</td><td class="date">Dec 15, 2026</td><td class="who p0">Brown</td><td class="who">Tzur</td></tr>
       <tr><td class="n">14</td><td class="date">Dec 22, 2026</td><td class="who">Schreiber</td><td class="who">Natanelli</td></tr>
-      <tr><td class="n">15</td><td class="date">Dec 29, 2026</td><td class="who lead p0">Brown</td><td class="who">Schreiber</td></tr>
-      <tr><td class="n">16</td><td class="date">Jan 5, 2027</td><td class="who lead p1">Schapiro</td><td class="who">Shaiman</td></tr>
+      <tr><td class="n">15</td><td class="date">Dec 29, 2026</td><td class="who p0">Brown</td><td class="who">Schreiber</td></tr>
+      <tr><td class="n">16</td><td class="date">Jan 5, 2027</td><td class="who p1">Schapiro</td><td class="who">Shaiman</td></tr>
       <tr><td class="n">17</td><td class="date">Jan 12, 2027</td><td class="who">Shaiman</td><td class="who">Tzur</td></tr>
       </tbody>
     </table>
