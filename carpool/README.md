@@ -2,6 +2,8 @@
 
 Rotation for Spring Gymnastics team sessions (Sundays & Wednesdays).
 
+Each session takes two drivers: one for the ride THERE, one for the ride BACK.
+
 Drivers, in rotation order: Schapiro, Kuritsky, Laufer, Berkowitz, Bonan.
 
 ## Adding the gym's closed dates
