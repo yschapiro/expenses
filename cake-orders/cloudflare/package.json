@@ -1,0 +1,12 @@
+{
+  "name": "dessert-orders-cloudflare",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "db:init": "wrangler d1 execute dessert-orders --remote --file=schema.sql",
+    "db:init:local": "wrangler d1 execute dessert-orders --local --file=schema.sql",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": { "wrangler": "^4.0.0" }
+}

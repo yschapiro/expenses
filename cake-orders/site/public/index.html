@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Order Form</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .item { border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:12px; background:#fff; position:relative; }
+  .item .num { font-weight:700; color:var(--accent); margin-bottom:8px; }
+  .remove { position:absolute; top:10px; right:10px; border:0; background:none; color:var(--muted); cursor:pointer; font-size:14px; }
+  .terms { max-height:220px; overflow:auto; white-space:pre-wrap; font-size:14px; border:1px solid var(--line); border-radius:9px; padding:12px; background:#fdfcfd; }
+  .agree { display:flex; gap:10px; align-items:flex-start; margin-top:14px; font-weight:600; }
+  .agree input { width:22px; height:22px; flex:none; margin-top:1px; }
+  .sig { border:1.5px dashed #b9a7bc; border-radius:10px; background:#fff; touch-action:none; width:100%; height:160px; display:block; }
+  .sig-row { display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:13px; color:var(--muted); }
+  .link { background:none; border:0; color:var(--accent); cursor:pointer; font:inherit; font-size:13px; }
+  .thanks { text-align:center; padding:40px 20px; }
+  .thanks h2 { color:var(--accent); font-size:24px; }
+  .hp { position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
+</style>
+</head>
+<body>
+<div id="demoBanner" class="demo-banner hidden">Demo mode: nothing is really sent. <a href="admin.html">Open the owner dashboard →</a> (password: <b>demo</b>)</div>
+<div class="wrap">
+  <header class="brand"><h1 id="biz">&nbsp;</h1><p>Order Form</p></header>
+  <div id="loadError" class="msg err hidden"></div>
+
+  <form id="form" novalidate class="hidden">
+    <div class="hp" aria-hidden="true"><label>Website <input id="website" tabindex="-1" autocomplete="off"></label></div>
+
+    <div class="card">
+      <h2><span class="step">1</span>Your details</h2>
+      <div class="grid">
+        <div class="full"><label class="req" for="name">Full name</label><input id="name" autocomplete="name"></div>
+        <div><label class="req" for="email">Email</label><input id="email" type="email" autocomplete="email"></div>
+        <div><label class="req" for="phone">Phone</label><input id="phone" type="tel" autocomplete="tel"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">2</span>Your event</h2>
+      <div class="grid">
+        <div><label for="eventType">Type of event</label><select id="eventType"></select></div>
+        <div><label class="req" for="eventDate">Date needed</label><input id="eventDate" type="date"></div>
+        <div><label class="req" for="fulfillment">Pickup or delivery?</label>
+          <select id="fulfillment"><option value="">Choose…</option><option>Pickup</option><option>Delivery</option></select></div>
+        <div><label for="time">Pickup / delivery time</label><input id="time" type="time"></div>
+        <div class="full hidden" id="addressWrap"><label class="req" for="address">Delivery address</label><input id="address" autocomplete="street-address"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">3</span>What you're ordering</h2>
+      <div id="items"></div>
+      <button type="button" class="btn btn-ghost" id="addItem">+ Add another item</button>
+      <div class="grid" style="margin-top:16px">
+        <div class="full"><label for="allergies">Allergies or dietary needs</label><input id="allergies" placeholder="e.g. nut allergy, dairy-free"></div>
+        <div class="full"><label for="notes">Anything else we should know?</label><textarea id="notes"></textarea></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">4</span>Payment</h2>
+      <label class="req" for="paymentMethod">How will you pay?</label>
+      <select id="paymentMethod"></select>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">5</span>Terms &amp; signature</h2>
+      <div class="terms" id="terms" tabindex="0"></div>
+      <label class="agree"><input type="checkbox" id="agree"> I have read and agree to the terms and conditions.</label>
+      <div class="grid" style="margin-top:14px"><div><label class="req" for="initials">Initials</label><input id="initials" maxlength="5" autocomplete="off"></div></div>
+      <label class="req" style="margin-top:14px">Signature</label>
+      <canvas class="sig" id="sig"></canvas>
+      <div class="sig-row"><span>Sign with your finger or mouse</span><button type="button" class="link" id="clearSig">Clear</button></div>
+    </div>
+
+    <div class="msg err hidden" id="error" role="alert"></div>
+    <button type="submit" class="btn btn-main btn-block" id="submit" disabled>Submit order</button>
+    <p class="hint" id="submitHint" style="text-align:center">Agree to the terms, add your initials and sign to submit.</p>
+  </form>
+
+  <div class="card thanks hidden" id="thanks">
+    <h2>Thank you! 🎉</h2>
+    <p>Your order form was received<span id="orderNo"></span>.<br>A copy has been emailed to you. We'll be in touch with your invoice soon.</p>
+  </div>
+</div>
+<script src="js/config.js"></script>
+<script type="module" src="js/form.js"></script>
+</body>
+</html>

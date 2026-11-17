@@ -1,0 +1,27 @@
+{
+  // Cloudflare Worker for the dessert order system.
+  // Setup steps: see README.md in this folder.
+  "name": "dessert-orders",
+  "main": "src/index.js",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "../site/public",
+    "run_worker_first": ["/api/*", "/calendar.ics"]
+  },
+  "d1_databases": [
+    // After `npx wrangler d1 create dessert-orders`, paste the database_id it prints here.
+    { "binding": "DB", "database_name": "dessert-orders", "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID" }
+  ],
+  "triggers": {
+    // Sunday 11:00 UTC = 7am New York (6am in winter). Change if needed.
+    "crons": ["0 11 * * SUN"]
+  },
+  "vars": {
+    // "Your Business <orders@yourdomain.com>" — must be a domain verified in Resend. Leave empty to turn email off.
+    "FROM_EMAIL": ""
+  }
+  // Secrets (set with `npx wrangler secret put NAME`):
+  //   ADMIN_PASSWORD        – password for the dashboard (required)
+  //   RESEND_API_KEY        – for emails (optional; resend.com, free tier)
+  //   SQUARE_ACCESS_TOKEN   – for draft invoices (optional)
+}
