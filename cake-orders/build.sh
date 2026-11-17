@@ -14,7 +14,8 @@ if [ -f godaddy/api.php ]; then
   cp -R site/public/. dist/godaddy/orders/
   rm -f dist/godaddy/orders/js/demo.js
   echo "window.ORDER_SITE = { api: 'api.php?r=' };" > dist/godaddy/orders/js/config.js
-  rsync -a --exclude tests --exclude 'data/*.sqlite' --exclude config.php --exclude .gitignore godaddy/ dist/godaddy/orders/
+  # Copy the PHP backend, leaving out tests, local databases and any real config.php
+  (cd godaddy && tar --exclude=./tests --exclude='./data/*.sqlite*' --exclude=./config.php --exclude=./.gitignore -cf - .) | (cd dist/godaddy/orders && tar -xf -)
   (cd dist/godaddy && zip -qr ../godaddy-orders.zip orders)
   echo "Built dist/godaddy-orders.zip"
 fi
