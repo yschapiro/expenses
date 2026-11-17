@@ -1,0 +1,21 @@
+# Keep secrets, the database, and command-line scripts away from the web.
+<FilesMatch "^(config\.php|config\.sample\.php|cron\.php|.*\.sqlite.*|.*\.sql|.*\.sh|\.gitignore)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+# lib/, data/ and tests/ also have their own deny-all .htaccess; this is a second layer.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^(lib|data|tests)(/.*)?$ - [F,L]
+</IfModule>
+<IfModule !mod_rewrite.c>
+  <IfModule mod_alias.c>
+    RedirectMatch 403 ^.*/(lib|data|tests)(/.*)?$
+  </IfModule>
+</IfModule>

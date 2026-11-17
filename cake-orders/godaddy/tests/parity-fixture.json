@@ -1,0 +1,22 @@
+{
+  "settings": {"business_name": "Bake & \"Co\"", "card_fee_pct": "3.5", "invoice_due_days": "7.5", "timezone": "America/Chicago", "empty": ""},
+  "forms": [
+    {"name": "  Sarah  Klein ", "email": "sarah@example.com", "phone": "(555) 123-4567", "eventType": "Bar/Bat Mitzvah", "eventDate": "2030-03-09",
+     "fulfillment": "Delivery", "time": "15:45", "address": "12 Main St, Apt; 4", "allergies": "Sesame", "notes": "Line1\nLine2, with; chars \\ end",
+     "paymentMethod": " credit CARD ", "initials": "SK", "agreed": true, "signature": "SIG",
+     "items": [{"product": "Cake", "size": "8” round", "choice1": "Chocolate", "choice2": "Raspberry", "qty": "2.5", "notes": "Navy & gold, \"Mazel Tov\""},
+               {"product": "Cookies", "size": "1 dozen", "choice1": "Vanilla Sugar Cookie", "qty": 3},
+               {"product": "Cake Pops", "size": "1 dozen", "choice1": "Funfetti", "choice2": "White Chocolate", "qty": "0"},
+               {"product": "Mystery", "size": "1 dozen", "choice1": "Unknown Flavor", "qty": 1},
+               {"product": "", "size": "x"}]},
+    {"name": "Bob", "email": "bob@x.io", "phone": "5551234", "eventDate": "2030-01-01", "fulfillment": "Pickup", "time": "9:00",
+     "paymentMethod": "Venmo", "initials": "B", "agreed": true, "signature": "SIG",
+     "items": [{"product": "Cake", "size": "10\" round", "choice1": "Red Velvet", "choice2": "Cookies & Cream", "qty": 4},
+               {"product": "Rice Krispie Pops", "size": "1 dozen", "choice2": "Milk Chocolate", "qty": 7}]}
+  ],
+  "badForms": [null, {}, {"name": "A", "email": "bad", "phone": "1"},
+    {"name": "A", "email": "a@b.co", "phone": "5551234567", "eventDate": "2030-01-01", "fulfillment": "Delivery", "paymentMethod": "Cash", "initials": "A"},
+    {"name": "A", "email": "a@b.co", "phone": "5551234567", "eventDate": "2030-01-01", "fulfillment": "Pickup", "paymentMethod": "Cash", "initials": "A", "agreed": true, "signature": "data:image/png;base64,abc"},
+    {"name": "A", "email": "a@b.co", "phone": "5551234567", "eventDate": "2030-01-01", "fulfillment": "Pickup", "paymentMethod": "Cash", "initials": "A", "agreed": true, "signature": "SIG", "items": []}],
+  "nums": ["$1,234.50", "1.2.3", "-.5", "--5", "abc", "", null, true, 0.1, 7, "3e5", " 42 "]
+}
