@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+  :root { --accent:#9c4f96; --accent-soft:#f6eaf5; --ink:#2b2230; --muted:#6f6475; --line:#e4dbe6; --bg:#fbf8fb; --err:#b3261e; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .wrap { max-width:720px; margin:0 auto; padding:24px 16px 64px; }
+  header { text-align:center; margin-bottom:20px; }
+  header h1 { font-size:28px; margin:0; color:var(--accent); letter-spacing:.3px; }
+  header p { margin:4px 0 0; color:var(--muted); }
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:16px; }
+  .card h2 { font-size:17px; margin:0 0 14px; }
+  .step { display:inline-flex; width:24px; height:24px; border-radius:50%; background:var(--accent); color:#fff; font-size:13px; align-items:center; justify-content:center; margin-right:8px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px 14px; }
+  .full { grid-column:1 / -1; }
+  label { display:block; font-size:14px; font-weight:600; margin-bottom:4px; }
+  .req::after { content:" *"; color:var(--accent); }
+  input, select, textarea { width:100%; font:inherit; padding:10px 12px; border:1px solid var(--line); border-radius:9px; background:#fff; color:var(--ink); }
+  input:focus, select:focus, textarea:focus { outline:2px solid var(--accent-soft); border-color:var(--accent); }
+  textarea { min-height:70px; resize:vertical; }
+  .item { border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:12px; background:#fff; position:relative; }
+  .item .num { font-weight:700; color:var(--accent); margin-bottom:8px; }
+  .remove { position:absolute; top:10px; right:10px; border:0; background:none; color:var(--muted); cursor:pointer; font-size:14px; }
+  .btn { display:inline-block; border:0; border-radius:10px; padding:12px 18px; font:inherit; font-weight:600; cursor:pointer; }
+  .btn-ghost { background:var(--accent-soft); color:var(--accent); }
+  .btn-main { background:var(--accent); color:#fff; width:100%; font-size:17px; padding:14px; }
+  .btn-main:disabled { background:#cbbccd; cursor:not-allowed; }
+  .terms { max-height:220px; overflow:auto; white-space:pre-wrap; font-size:14px; border:1px solid var(--line); border-radius:9px; padding:12px; background:#fdfcfd; }
+  .agree { display:flex; gap:10px; align-items:flex-start; margin-top:14px; font-weight:600; }
+  .agree input { width:22px; height:22px; flex:none; margin-top:1px; }
+  .sig { border:1.5px dashed #b9a7bc; border-radius:10px; background:#fff; touch-action:none; width:100%; height:160px; display:block; }
+  .sig-row { display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:13px; color:var(--muted); }
+  .link { background:none; border:0; color:var(--accent); cursor:pointer; font:inherit; font-size:13px; }
+  .hint { font-size:13px; color:var(--muted); margin-top:4px; }
+  .error { color:var(--err); background:#fdecea; border-radius:9px; padding:10px 12px; margin-bottom:12px; display:none; }
+  .thanks { text-align:center; padding:40px 20px; }
+  .thanks h2 { color:var(--accent); font-size:24px; }
+  .hidden { display:none !important; }
+  @media (max-width:560px) { .grid { grid-template-columns:1fr; } .card { padding:16px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="biz"></h1>
+    <p>Order Form</p>
+  </header>
+
+  <form id="form" novalidate>
+    <div class="card">
+      <h2><span class="step">1</span>Your details</h2>
+      <div class="grid">
+        <div class="full"><label class="req" for="name">Full name</label><input id="name" autocomplete="name" required></div>
+        <div><label class="req" for="email">Email</label><input id="email" type="email" autocomplete="email" required></div>
+        <div><label class="req" for="phone">Phone</label><input id="phone" type="tel" autocomplete="tel" required></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">2</span>Your event</h2>
+      <div class="grid">
+        <div><label for="eventType">Type of event</label><select id="eventType"></select></div>
+        <div><label class="req" for="eventDate">Date needed</label><input id="eventDate" type="date" required></div>
+        <div><label class="req" for="fulfillment">Pickup or delivery?</label>
+          <select id="fulfillment" required><option value="">Choose…</option><option>Pickup</option><option>Delivery</option></select></div>
+        <div><label for="time">Pickup / delivery time</label><input id="time" type="time"></div>
+        <div class="full hidden" id="addressWrap"><label class="req" for="address">Delivery address</label><input id="address" autocomplete="street-address"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">3</span>What you're ordering</h2>
+      <div id="items"></div>
+      <button type="button" class="btn btn-ghost" id="addItem">+ Add another item</button>
+      <div class="grid" style="margin-top:16px">
+        <div class="full"><label for="allergies">Allergies or dietary needs</label><input id="allergies" placeholder="e.g. nut allergy, dairy-free"></div>
+        <div class="full"><label for="notes">Anything else we should know?</label><textarea id="notes"></textarea></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">4</span>Payment</h2>
+      <label class="req" for="paymentMethod">How will you pay?</label>
+      <select id="paymentMethod" required></select>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">5</span>Terms &amp; signature</h2>
+      <div class="terms" id="terms" tabindex="0"></div>
+      <label class="agree"><input type="checkbox" id="agree"> I have read and agree to the terms and conditions.</label>
+      <div class="grid" style="margin-top:14px">
+        <div><label class="req" for="initials">Initials</label><input id="initials" maxlength="5" autocomplete="off"></div>
+      </div>
+      <label class="req" style="margin-top:14px">Signature</label>
+      <canvas class="sig" id="sig"></canvas>
+      <div class="sig-row"><span>Sign with your finger or mouse</span><button type="button" class="link" id="clearSig">Clear</button></div>
+    </div>
+
+    <div class="error" id="error" role="alert"></div>
+    <button type="submit" class="btn btn-main" id="submit" disabled>Submit order</button>
+    <p class="hint" id="submitHint" style="text-align:center">Agree to the terms, add your initials and sign to submit.</p>
+  </form>
+
+  <div class="card thanks hidden" id="thanks">
+    <h2>Thank you! 🎉</h2>
+    <p>Your order form was received<span id="orderNo"></span>.<br>A copy has been emailed to you. We'll be in touch with your invoice soon.</p>
+  </div>
+</div>
+
+<script>
+const CONFIG = <?!= configJson ?>;
+const $ = (id) => document.getElementById(id);
+
+// ── Fill in the page from your Settings / Products / Flavors tabs ──
+document.title = CONFIG.businessName + ' – Order Form';
+$('biz').textContent = CONFIG.businessName;
+$('terms').textContent = CONFIG.terms;
+fillSelect($('eventType'), CONFIG.eventTypes, 'Choose…');
+fillSelect($('paymentMethod'), CONFIG.paymentMethods.map(m =>
+  ({ value: m, label: m === CONFIG.cardMethod && CONFIG.cardFeePct ? m + ' (+' + CONFIG.cardFeePct + '% card fee)' : m })), 'Choose…');
+$('eventDate').min = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+
+function fillSelect(sel, options, placeholder) {
+  sel.innerHTML = '';
+  if (placeholder) sel.add(new Option(placeholder, ''));
+  options.forEach(o => sel.add(typeof o === 'string' ? new Option(o, o) : new Option(o.label, o.value)));
+}
+const unique = (arr) => [...new Set(arr)];
+
+// ── Items (cakes, cookies, pops…) ──
+let itemCount = 0;
+function addItem() {
+  itemCount++;
+  const el = document.createElement('div');
+  el.className = 'item';
+  el.innerHTML =
+    '<div class="num"></div>' +
+    '<button type="button" class="remove" aria-label="Remove item">✕ Remove</button>' +
+    '<div class="grid">' +
+      '<div><label class="req">Item</label><select data-k="product"></select></div>' +
+      '<div><label class="req">Size</label><select data-k="size"></select></div>' +
+      '<div class="c1"><label data-l="1"></label><select data-k="choice1"></select></div>' +
+      '<div class="c2"><label data-l="2"></label><select data-k="choice2"></select></div>' +
+      '<div><label class="req">Quantity</label><input data-k="qty" type="number" min="1" value="1" inputmode="numeric"></div>' +
+      '<div class="full"><label>Design details</label><textarea data-k="notes" placeholder="Colors, theme, wording, tiers…"></textarea></div>' +
+    '</div>';
+  $('items').appendChild(el);
+  const q = (k) => el.querySelector('[data-k="' + k + '"]');
+  fillSelect(q('product'), unique(CONFIG.products.map(p => p.product)), 'Choose…');
+  q('product').addEventListener('change', () => onProduct(el));
+  q('size').addEventListener('change', () => onSize(el));
+  el.querySelector('.remove').addEventListener('click', () => { el.remove(); renumber(); });
+  onProduct(el);
+  renumber();
+}
+function onProduct(el) {
+  const product = el.querySelector('[data-k="product"]').value;
+  fillSelect(el.querySelector('[data-k="size"]'), CONFIG.products.filter(p => p.product === product).map(p => p.size), product ? 'Choose…' : '—');
+  onSize(el);
+}
+function onSize(el) {
+  const product = el.querySelector('[data-k="product"]').value;
+  const size = el.querySelector('[data-k="size"]').value;
+  const row = CONFIG.products.find(p => p.product === product && p.size === size) ||
+              CONFIG.products.find(p => p.product === product) || {};
+  [1, 2].forEach(n => {
+    const list = row['choice' + n];
+    const wrap = el.querySelector('.c' + n);
+    wrap.classList.toggle('hidden', !list);
+    wrap.querySelector('label').textContent = list || '';
+    wrap.querySelector('label').className = list ? 'req' : '';
+    fillSelect(wrap.querySelector('select'), list ? (CONFIG.lists[list] || []) : [], 'Choose…');
+  });
+}
+function renumber() {
+  const items = [...document.querySelectorAll('.item')];
+  items.forEach((el, i) => {
+    el.querySelector('.num').textContent = 'Item ' + (i + 1);
+    el.querySelector('.remove').classList.toggle('hidden', items.length === 1);
+  });
+}
+$('addItem').addEventListener('click', addItem);
+addItem();
+
+$('fulfillment').addEventListener('change', () =>
+  $('addressWrap').classList.toggle('hidden', $('fulfillment').value !== 'Delivery'));
+
+// ── Signature pad ──
+const canvas = $('sig'), ctx = canvas.getContext('2d');
+let drawing = false, signed = false, last = null;
+function sizeCanvas() {
+  const r = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  const saved = signed ? canvas.toDataURL() : null;
+  canvas.width = r.width * dpr; canvas.height = r.height * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#1d1a22';
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, r.width, r.height);
+  if (saved) { const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, r.width, r.height); img.src = saved; }
+}
+const pos = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+canvas.addEventListener('pointerdown', (e) => { drawing = true; last = pos(e); canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener('pointermove', (e) => {
+  if (!drawing) return;
+  const p = pos(e);
+  ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+  last = p;
+  if (!signed) { signed = true; updateSubmit(); }
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach(t => canvas.addEventListener(t, () => { drawing = false; }));
+$('clearSig').addEventListener('click', () => { signed = false; sizeCanvas(); updateSubmit(); });
+window.addEventListener('resize', sizeCanvas);
+sizeCanvas();
+
+// ── Submit is locked until agree + initials + signature ──
+function updateSubmit() {
+  const ok = $('agree').checked && $('initials').value.trim() && signed;
+  $('submit').disabled = !ok;
+  $('submitHint').classList.toggle('hidden', !!ok);
+}
+$('agree').addEventListener('change', updateSubmit);
+$('initials').addEventListener('input', updateSubmit);
+
+function collect() {
+  const items = [...document.querySelectorAll('.item')].map(el => {
+    const v = (k) => el.querySelector('[data-k="' + k + '"]').value.trim();
+    return { product: v('product'), size: v('size'), choice1: v('choice1'), choice2: v('choice2'), qty: parseInt(v('qty'), 10) || 1, notes: v('notes') };
+  });
+  const v = (id) => $(id).value.trim();
+  return {
+    name: v('name'), email: v('email'), phone: v('phone'),
+    eventType: v('eventType'), eventDate: v('eventDate'), fulfillment: v('fulfillment'), time: v('time'), address: v('address'),
+    items, allergies: v('allergies'), notes: v('notes'), paymentMethod: v('paymentMethod'),
+    agreed: $('agree').checked, initials: v('initials'), signature: canvas.toDataURL('image/png')
+  };
+}
+
+function check(d) {
+  const miss = [];
+  if (!d.name) miss.push('your name');
+  if (!/^\S+@\S+\.\S+$/.test(d.email)) miss.push('a valid email');
+  if (d.phone.replace(/\D/g, '').length < 7) miss.push('your phone number');
+  if (!d.eventDate) miss.push('the date');
+  if (!d.fulfillment) miss.push('pickup or delivery');
+  if (d.fulfillment === 'Delivery' && !d.address) miss.push('the delivery address');
+  if (!d.paymentMethod) miss.push('how you will pay');
+  d.items.forEach((it, i) => {
+    const el = document.querySelectorAll('.item')[i];
+    const needs = ['product', 'size'].concat([1, 2].filter(n => !el.querySelector('.c' + n).classList.contains('hidden')).map(n => 'choice' + n));
+    if (needs.some(k => !it[k])) miss.push('all choices for item ' + (i + 1));
+  });
+  return miss;
+}
+
+$('form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const d = collect();
+  const miss = check(d);
+  const err = $('error');
+  if (miss.length) { err.textContent = 'Please add ' + miss.join(', ') + '.'; err.style.display = 'block'; err.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+  err.style.display = 'none';
+  $('submit').disabled = true; $('submit').textContent = 'Sending…';
+  google.script.run
+    .withSuccessHandler((res) => {
+      $('form').classList.add('hidden');
+      $('orderNo').textContent = res && res.orderNo ? ' (order #' + res.orderNo + ')' : '';
+      $('thanks').classList.remove('hidden');
+      window.scrollTo(0, 0);
+    })
+    .withFailureHandler((e2) => {
+      err.textContent = 'Sorry, something went wrong: ' + (e2 && e2.message || e2) + ' Please try again.';
+      err.style.display = 'block';
+      $('submit').disabled = false; $('submit').textContent = 'Submit order';
+    })
+    .submitOrder(d);
+});
+</script>
+</body>
+</html>
