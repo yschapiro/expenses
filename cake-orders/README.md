@@ -1,55 +1,42 @@
-# Custom Dessert Order System: three ways to run it
+# Custom Dessert Order System
 
-All three do the same job:
+**Decision (Nov 17 meeting):** go with the standalone website, hosted on Cloudflare at `orders.<her domain>`.
+Her GoDaddy site is the drag-and-drop Website Builder, so it just links to the order site. The Google version (`google/`) and the PHP version for GoDaddy hosting (`godaddy/`) are **archived**: kept for reference, but no longer updated.
 
-1. **Order form:** the customer fills it in, scrolls past the terms, can't submit without ticking "I agree", initialing and signing.
-2. **You get a clean summary.** Every order is saved with a signed copy (the terms they agreed to, their initials and signature).
-3. **Calendar:** each order shows up on your calendar.
-4. **Square:** a draft invoice is created, with the 3.5% fee added when they pick credit card. Nothing is sent until you press Send.
-5. **Inventory:** the recipes say what each item uses. Every new order is checked against your stock, and you get an alert right away if you're short.
-6. **Sunday shopping list:** an email with what to buy for the week's orders.
+## How it works now
 
-| | **A. Google** (`google/`) | **B. Own website on Cloudflare** (`cloudflare/`) | **C. On her GoDaddy website** (`godaddy/`) |
-|---|---|---|---|
-| Form link | Long Google link (`script.google.com/…`) | Its own address, e.g. `orders.herbakery.com` | On her site, e.g. `herbakery.com/orders/` |
-| Where she manages orders | A Google Sheet | Owner dashboard (phone-friendly) | Same owner dashboard |
-| Editing recipes, inventory, menu | Sheet tabs | Dashboard tabs | Dashboard tabs |
-| Calendar | Real Google Calendar entries, instant, change color on confirm | Calendar subscription link (updates every few hours) + "add to calendar" file in each new-order email | Same as B |
-| Emails | Her Gmail, nothing to set up | Resend (free); one-time domain verification | GoDaddy's mail server (may land in spam; can switch to SMTP later) |
-| Square | ✅ | ✅ | ✅ |
-| Monthly cost | Free | Free (Cloudflare + Resend free plans) | Included in her GoDaddy hosting plan |
-| Setup | ~15 min, all clicks, in her Google account | ~20 min, needs a computer with Node (you) | ~20 min: upload a folder, set a password, add a cron job |
-| Requires | Her Google account | Your Cloudflare account | GoDaddy **Web Hosting (cPanel)**, not the drag-and-drop Website Builder |
-| Best if… | She lives in Google and likes spreadsheets | You want the nicest version and are happy to host it | She wants everything under her own website |
+1. **After the design conversation, she prepares a private link** (Dashboard → *+ Prepare order link*). It holds:
+   - the customer's details (as much or as little as she likes)
+   - the **design summary**, plus **sketches or inspiration photos**
+   - the **items and agreed prices**. Cakes can have **any number of tiers**, each tier with its own size. She can preset flavors or leave them to the customer.
+2. **The customer opens their link.** They see the design and photos, choose a **flavor and filling for each tier**, and can **change quantities** on cookies and pops. They can **add extra items**, but only ones marked as add-ons, at the minimum price. They enter a delivery **zip code**, which picks the **delivery zone and fee** automatically. They see a running total (card fee included if they pay by card), then agree to the terms, initial and sign. Each link works once.
+3. **She gets the order as New.** If the customer changed or added anything, it's flagged **"Needs review"** and lists exactly what changed. **It can't be confirmed until she presses "Changes reviewed."**
+4. **Confirming emails the customer** that the order is confirmed. (When they submit, they're told it's *pending final review*.)
+5. **Production statuses:** Confirmed → Baked → Decorated → Done. **Done takes the ingredients out of inventory.** Payment is tracked separately: Unpaid / Deposit paid / Paid.
+6. Everything from before still works:
+   - Square draft invoice, now including the delivery fee and the card fee
+   - shortage alerts and the Sunday shopping list
+   - calendar link
+   - signed copy, now printable **with or without** the terms
+7. **Recipes:** one recipe at a time, with ingredients down the side and sizes across the top.
+8. **🐞 Report an issue:** a button on every dashboard page, and on the form when she's signed in on that device. It takes a screenshot, she adds a note, and it lands in **Requests & issues**, where each one gets a status (New / In progress / Fixed / Won't do).
+9. **Installable app:** on her phone, open the dashboard and choose *Add to Home Screen*. It opens like an app.
 
-**Try it:** `dist/demo/` (built by `./build.sh`) is a click-through demo with sample data. It runs in the browser with no server, and the "Emails (demo)" tab shows what would have been emailed.
-
-## Folder guide
+## Folders
 
 ```
-google/       Option A: Apps Script for a Google Sheet (paste-in setup; see google/README.md)
-site/public/  The form (index.html) and owner dashboard (admin.html), shared by B and C
-  js/core.js    Business logic: pricing, card fee, recipe math, shopping list, emails, Square, calendar
-  js/api.js     Server routes (used by Cloudflare and the demo; mirrored in PHP for GoDaddy)
-  js/demo.js    In-browser pretend server for the demo
-cloudflare/   Option B: Cloudflare Worker + D1 database (see cloudflare/README.md)
-godaddy/      Option C: PHP version for GoDaddy cPanel hosting (see godaddy/README.md)
-tests/e2e.cjs Full browser test: form → dashboard → status → inventory → calendar → settings
-build.sh      Builds dist/demo and dist/godaddy-orders.zip
+site/public/   The website: index.html (customer form) and admin.html (dashboard), shared logic in js/
+  js/core.js     Pricing, card fee, delivery zones, tiers, recipe math, review rules, emails, Square, calendar
+  js/api.js      Server routes (used by Cloudflare and by the demo)
+  js/demo.js     In-browser pretend server for the demo (password: demo)
+  js/report.js   "Report an issue" button
+cloudflare/    The server: Worker + D1 database (see cloudflare/README.md for setup)
+tests/e2e.cjs  Full browser test of the whole flow (passes on the demo and on the Cloudflare server)
+build.sh       Builds dist/demo (the click-through demo)
+PLAN.md        What's next (phase 2 and phase 3) and open questions
+google/, godaddy/  Archived earlier options
 ```
 
-## Linking from her website
-Whatever she picks, her current website just needs a **button or menu item, "Order Form"**, that links to the form's address.
-In GoDaddy's Website Builder you can also embed the form in a page: **Add Section → HTML → Embed code**:
-```html
-<iframe src="https://YOUR-FORM-ADDRESS/" style="width:100%;height:2400px;border:0" title="Order form"></iframe>
-```
-(Option A's Google link can be embedded the same way.)
-
-## How the recipe math works (all options)
-For each item ordered, the system adds up the recipe rows for **the product itself** at that size (boards, boxes, outside icing, sticks, bags) plus **each flavor, filling or coating they picked** at that size, then multiplies by the quantity. A recipe row with a blank size counts for every size. Names must match the menu exactly. If something can't be counted (no recipe yet, or an ingredient missing from inventory), the alerts say so instead of skipping it silently.
-
-- **Reserved** = what all New + Confirmed orders will use
-- **Left** = on hand minus reserved. Red means you need to buy.
-
-Marking an order **Done** takes its ingredients off "on hand" (only once).
+## For Claude: reading her issue reports
+`GET /api/admin/feedback` (header `X-Admin-Key: <password>`) lists them. Add `?full=1` to include screenshots.
+`POST /api/admin/feedback/<id>` with `{"status": "In progress" | "Fixed" | "Won't do", "reply": "..."}` updates one.

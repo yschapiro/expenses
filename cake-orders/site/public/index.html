@@ -18,6 +18,21 @@
   .thanks { text-align:center; padding:40px 20px; }
   .thanks h2 { color:var(--accent); font-size:24px; }
   .hp { position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
+  .design-text { white-space:pre-wrap; }
+  .gallery { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px; margin-top:12px; }
+  .gallery img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:10px; border:1px solid var(--line); cursor:zoom-in; }
+  .locked { display:flex; justify-content:space-between; gap:10px; align-items:baseline; }
+  .locked .price { font-weight:700; white-space:nowrap; }
+  .tier { border-top:1px dashed var(--line); padding-top:10px; margin-top:10px; }
+  .tier h4 { margin:0 0 6px; font-size:14px; color:var(--muted); }
+  .fixed { padding:10px 12px; background:#faf6fa; border-radius:9px; border:1px solid var(--line); }
+  .added-note { font-size:13px; color:var(--warn); background:var(--warn-bg); border-radius:8px; padding:6px 10px; margin-top:8px; }
+  .totals { width:100%; border-collapse:collapse; font-size:15px; }
+  .totals td { padding:4px 0; } .totals td:last-child { text-align:right; font-variant-numeric:tabular-nums; }
+  .totals tr.total td { border-top:1px solid var(--line); padding-top:8px; font-weight:700; font-size:17px; }
+  .zone-ok { color:var(--ok); font-weight:600; font-size:14px; margin-top:6px; }
+  .lightbox { position:fixed; inset:0; background:rgba(20,10,20,.85); display:flex; align-items:center; justify-content:center; z-index:30; padding:16px; }
+  .lightbox img { max-width:100%; max-height:100%; border-radius:10px; }
 </style>
 </head>
 <body>
@@ -28,6 +43,13 @@
 
   <form id="form" novalidate class="hidden">
     <div class="hp" aria-hidden="true"><label>Website <input id="website" tabindex="-1" autocomplete="off"></label></div>
+
+    <div class="card hidden" id="designCard">
+      <h2>Your design</h2>
+      <p class="hint" style="margin-top:-8px">What we agreed on. If anything here looks wrong, please contact us before submitting.</p>
+      <div class="design-text" id="designText"></div>
+      <div class="gallery" id="gallery"></div>
+    </div>
 
     <div class="card">
       <h2><span class="step">1</span>Your details</h2>
@@ -46,14 +68,19 @@
         <div><label class="req" for="fulfillment">Pickup or delivery?</label>
           <select id="fulfillment"><option value="">Choose…</option><option>Pickup</option><option>Delivery</option></select></div>
         <div><label for="time">Pickup / delivery time</label><input id="time" type="time"></div>
-        <div class="full hidden" id="addressWrap"><label class="req" for="address">Delivery address</label><input id="address" autocomplete="street-address"></div>
+        <div class="full hidden addr"><label class="req" for="address">Delivery address</label><input id="address" autocomplete="street-address"></div>
+        <div class="hidden addr"><label class="req" for="zip">Zip code</label><input id="zip" inputmode="numeric" maxlength="10" autocomplete="postal-code"></div>
+        <div class="hidden addr" id="zoneWrap"><label class="req" for="zone">Delivery area</label><select id="zone"></select></div>
+        <div class="full hidden" id="zoneInfo"></div>
       </div>
     </div>
 
     <div class="card">
       <h2><span class="step">3</span>What you're ordering</h2>
+      <p class="hint hidden" id="itemsHint" style="margin-top:-8px">Sizes and prices are as we agreed. Please choose the flavors.</p>
       <div id="items"></div>
       <button type="button" class="btn btn-ghost" id="addItem">+ Add another item</button>
+      <p class="hint hidden" id="addHint">Anything you add here starts at our minimum price. We'll confirm the final price before your order is confirmed.</p>
       <div class="grid" style="margin-top:16px">
         <div class="full"><label for="allergies">Allergies or dietary needs</label><input id="allergies" placeholder="e.g. nut allergy, dairy-free"></div>
         <div class="full"><label for="notes">Anything else we should know?</label><textarea id="notes"></textarea></div>
@@ -64,6 +91,7 @@
       <h2><span class="step">4</span>Payment</h2>
       <label class="req" for="paymentMethod">How will you pay?</label>
       <select id="paymentMethod"></select>
+      <table class="totals hidden" id="totals" style="margin-top:14px"></table>
     </div>
 
     <div class="card">
@@ -83,7 +111,7 @@
 
   <div class="card thanks hidden" id="thanks">
     <h2>Thank you! 🎉</h2>
-    <p>Your order form was received<span id="orderNo"></span>.<br>A copy has been emailed to you. We'll be in touch with your invoice soon.</p>
+    <p id="thanksText">Your order was received<span id="orderNo"></span>.<br>It's now <b>pending our final review</b>. A copy has been emailed to you, and we'll email again once it's confirmed.</p>
   </div>
 </div>
 <script src="js/config.js"></script>

@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Orders Dashboard</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#9c4f96">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="css/style.css">
 <style>
   body { background:#f7f3f7; }
@@ -50,6 +54,24 @@
   .login { max-width:360px; margin:12vh auto; }
   .mail { border:1px solid var(--line); border-radius:10px; margin-bottom:10px; background:#fff; }
   .mail summary { padding:10px 12px; cursor:pointer; } .mail iframe { width:100%; height:420px; border:0; border-top:1px solid var(--line); }
+  .flag.warnflag { color:var(--warn); }
+  .pill.Draft { background:#eef2fb; color:#3d5a8a; } .pill.Baked, .pill.Decorated { background:#fff1e0; color:#94560b; }
+  .pill.pay-Unpaid { background:#fdecea; color:var(--err); } .pill.pay-Depositpaid { background:#fff4dc; color:var(--warn); } .pill.pay-Paid { background:var(--ok-bg); color:var(--ok); }
+  .pill.warnpill { background:var(--warn-bg); color:var(--warn); }
+  .pill.fb-New { background:#eee6f5; color:#6a3d8f; } .pill.fb-Inprogress { background:#fff4dc; color:var(--warn); } .pill.fb-Fixed { background:var(--ok-bg); color:var(--ok); }
+  .thumbs { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0; }
+  .thumbs img, .thumb img { width:96px; height:96px; object-fit:cover; border-radius:8px; border:1px solid var(--line); }
+  .thumb { position:relative; } .thumb .x { position:absolute; top:2px; right:2px; background:#fff; border-radius:50%; }
+  .prep-item { border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px; background:#fdfbfd; }
+  .ptier { margin-top:8px; padding-top:8px; border-top:1px dashed var(--line); }
+  .recipes { display:grid; grid-template-columns:240px minmax(0,1fr); gap:16px; align-items:start; }
+  .rlist { padding:10px; max-height:75vh; overflow:auto; position:sticky; top:110px; }
+  .rgroup { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:10px 6px 4px; }
+  .rname { display:flex; justify-content:space-between; width:100%; border:0; background:none; text-align:left; padding:6px 8px; border-radius:8px; font:inherit; font-size:14px; cursor:pointer; color:inherit; }
+  .rname span { font-size:12px; } .rname .missing { color:var(--warn); }
+  .rname.on { background:var(--accent-soft); color:var(--accent); font-weight:600; }
+  .unit { display:block; margin:2px 0 0 4px; }
+  @media (max-width:700px) { .recipes { grid-template-columns:1fr; } .rlist { position:static; max-height:240px; } }
   @media (max-width:700px) { .two { grid-template-columns:1fr; } .orow { grid-template-columns:84px 1fr; } .oright { grid-column:1 / -1; text-align:left; } .kv { grid-template-columns:100px 1fr; } }
   @media print { .top, .toolbar, .actions, .noprint { display:none !important; } }
 </style>
@@ -74,6 +96,7 @@
       <a href="#recipes" data-tab="recipes">Recipes</a>
       <a href="#menu" data-tab="menu">Menu</a>
       <a href="#settings" data-tab="settings">Settings</a>
+      <a href="#feedback" data-tab="feedback">Requests &amp; issues</a>
       <a href="#outbox" data-tab="outbox" class="hidden" id="outboxTab">Emails (demo)</a>
     </nav>
   </div></div>

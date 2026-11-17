@@ -74,10 +74,19 @@ function b64(str) {
 // ───────── D1 storage ─────────
 const ORDER_COLS = ['created_at', 'status', 'name', 'email', 'phone', 'event_type', 'event_date', 'fulfillment', 'time', 'address', 'items',
   'allergies', 'notes', 'payment_method', 'subtotal', 'fee', 'total', 'initials', 'terms_text', 'terms_accepted_at', 'signature',
-  'client_info', 'square_invoice_id', 'square_invoice_url', 'deducted_at'];
-const LIST_COLS = ORDER_COLS.filter((c) => c !== 'signature' && c !== 'terms_text');
+  'client_info', 'square_invoice_id', 'square_invoice_url', 'deducted_at',
+  'token', 'design_summary', 'images', 'prefill_items', 'changes', 'needs_review', 'zip', 'delivery_zone', 'delivery_fee',
+  'payment_status', 'submitted_at', 'confirmed_email_at'];
+const JSON_COLS = ['items', 'images', 'prefill_items', 'changes'];
+const LIST_COLS = ORDER_COLS.filter((c) => !['signature', 'terms_text', 'prefill_items'].includes(c));
+const toDb = (c, v) => JSON_COLS.includes(c) ? JSON.stringify(v ?? []) : (v ?? '');
 
-function rowToOrder(r) { return r && { ...r, items: JSON.parse(r.items || '[]') }; }
+function rowToOrder(r) {
+  if (!r) return r;
+  const o = { ...r };
+  for (const c of JSON_COLS) if (c in o) { try { o[c] = JSON.parse(o[c] || '[]'); } catch { o[c] = []; } }
+  return o;
+}
 
 function d1Adapter(db) {
   return {
@@ -100,7 +109,7 @@ function d1Adapter(db) {
       await db.batch([db.prepare(`DELETE FROM ${name}`), ...rows.map((r) => ins.bind(...cols.map((c) => r[c] ?? null)))]);
     },
     async insertOrder(o) {
-      const vals = ORDER_COLS.map((c) => c === 'items' ? JSON.stringify(o.items) : (o[c] ?? ''));
+      const vals = ORDER_COLS.map((c) => toDb(c, o[c]));
       const r = await db.prepare(`INSERT INTO orders (${ORDER_COLS.join(', ')}) VALUES (${ORDER_COLS.map(() => '?').join(', ')})`).bind(...vals).run();
       return r.meta.last_row_id;
     },
@@ -108,7 +117,7 @@ function d1Adapter(db) {
       const keys = Object.keys(patch).filter((k) => ORDER_COLS.includes(k));
       if (!keys.length) return;
       await db.prepare(`UPDATE orders SET ${keys.map((k) => k + ' = ?').join(', ')} WHERE id = ?`)
-        .bind(...keys.map((k) => k === 'items' ? JSON.stringify(patch[k]) : patch[k]), id).run();
+        .bind(...keys.map((k) => toDb(k, patch[k])), id).run();
     },
     async getOrder(id) {
       return rowToOrder(await db.prepare('SELECT * FROM orders WHERE id = ?').bind(id).first());
@@ -116,6 +125,22 @@ function d1Adapter(db) {
     async listOrders() {
       const { results } = await db.prepare(`SELECT id, ${LIST_COLS.join(', ')} FROM orders ORDER BY event_date, time`).all();
       return results.map(rowToOrder);
+    },
+    async findOrderByToken(token) {
+      if (!token) return null;
+      return rowToOrder(await db.prepare('SELECT * FROM orders WHERE token = ?').bind(token).first());
+    },
+    async insertImage(id, data) { await db.prepare('INSERT INTO images (id, data) VALUES (?, ?)').bind(id, data).run(); },
+    async getImage(id) { const r = await db.prepare('SELECT data FROM images WHERE id = ?').bind(id).first(); return r ? r.data : null; },
+    async insertFeedback(f) {
+      const r = await db.prepare('INSERT INTO feedback (created_at, page, note, screenshot, status, reply) VALUES (?, ?, ?, ?, ?, ?)')
+        .bind(f.created_at, f.page, f.note, f.screenshot, f.status, f.reply).run();
+      return r.meta.last_row_id;
+    },
+    async listFeedback() { return (await db.prepare('SELECT * FROM feedback ORDER BY id DESC').all()).results; },
+    async updateFeedback(id, patch) {
+      const keys = Object.keys(patch).filter((k) => ['status', 'reply'].includes(k));
+      if (keys.length) await db.prepare(`UPDATE feedback SET ${keys.map((k) => k + ' = ?').join(', ')} WHERE id = ?`).bind(...keys.map((k) => patch[k]), id).run();
     },
     async adjustInventory(ingredient, delta) {
       await db.prepare('UPDATE inventory SET on_hand = ROUND(on_hand + ?, 3) WHERE lower(trim(ingredient)) = lower(trim(?))').bind(delta, ingredient).run();

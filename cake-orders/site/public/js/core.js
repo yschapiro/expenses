@@ -1,9 +1,12 @@
 // Shared business logic for the order system.
-// Used by: the Cloudflare Worker (server), the in-browser demo, and mirrored in PHP (godaddy/lib/core.php).
+// Used by: the Cloudflare Worker (server) and the in-browser demo.
 // Pure functions only — no network, no storage.
 
-export const STATUSES = ['New', 'Confirmed', 'Done', 'Cancelled'];
-export const OPEN_STATUSES = ['New', 'Confirmed'];
+// Draft = link prepared and sent, customer hasn't submitted yet.
+export const STATUSES = ['Draft', 'New', 'Confirmed', 'Baked', 'Decorated', 'Done', 'Cancelled'];
+/** Orders whose ingredients are reserved (submitted, not finished). */
+export const OPEN_STATUSES = ['New', 'Confirmed', 'Baked', 'Decorated'];
+export const PAYMENT_STATUSES = ['Unpaid', 'Deposit paid', 'Paid'];
 
 /** Settings: key → [default value, label, help]. */
 export const SETTINGS_DEFS = {
@@ -16,7 +19,7 @@ export const SETTINGS_DEFS = {
   card_fee_pct: ['3.5', 'Card fee %', 'Added to the invoice when that method is chosen'],
   currency: ['USD', 'Currency', ''],
   invoice_due_days: ['7', 'Invoice due (days before event)', 'Due date on the draft Square invoice'],
-  send_customer_copy: ['Yes', 'Email customer a copy', 'Yes = customer gets their signed form by email'],
+  send_customer_copy: ['Yes', 'Email the customer', 'Yes = customer gets "received, pending review" and "confirmed" emails'],
   square_env: ['production', 'Square environment', 'production = real; sandbox = testing'],
   square_location_id: ['', 'Square location ID', 'Dashboard → Settings → "Test Square" shows it'],
   terms: [[
@@ -33,12 +36,13 @@ export const SETTINGS_DEFS = {
 
 /** Editable tables and their columns (same in every backend). */
 export const TABLES = {
-  products: ['product', 'size', 'price', 'choice1', 'choice2'],
+  products: ['product', 'size', 'price', 'choice1', 'choice2', 'tiered', 'addon'],
   choices: ['list', 'choice'],
+  zones: ['zone', 'fee', 'zips'],
   inventory: ['ingredient', 'unit', 'on_hand', 'keep_at_least'],
   recipes: ['recipe', 'size', 'ingredient', 'amount', 'notes']
 };
-export const NUMERIC = { price: 1, on_hand: 1, keep_at_least: 1, amount: 1 };
+export const NUMERIC = { price: 1, on_hand: 1, keep_at_least: 1, amount: 1, fee: 1 };
 
 // ───────── helpers ─────────
 export const norm = (v) => String(v ?? '').trim().toLowerCase().replace(/[“”″]/g, '"').replace(/\s+/g, ' ');
@@ -83,7 +87,7 @@ export function addDays(ymd, days) {
 }
 
 // ───────── form config ─────────
-export function formConfig(settings, products, choices) {
+export function formConfig(settings, products, choices, zones = []) {
   const s = settingsWithDefaults(settings);
   const lists = {};
   for (const c of choices) if (c.list && c.choice) (lists[String(c.list).trim()] ||= []).push(String(c.choice).trim());
@@ -96,8 +100,10 @@ export function formConfig(settings, products, choices) {
     terms: s.terms,
     products: products.filter((p) => p.product && p.size).map((p) => ({
       product: String(p.product).trim(), size: String(p.size).trim(),
-      choice1: String(p.choice1 || '').trim(), choice2: String(p.choice2 || '').trim()
+      choice1: String(p.choice1 || '').trim(), choice2: String(p.choice2 || '').trim(),
+      tiered: yes(p.tiered), addon: yes(p.addon), price: num(p.price)
     })),
+    zones: zones.filter((z) => z.zone).map((z) => ({ zone: String(z.zone).trim(), fee: num(z.fee), zips: String(z.zips || '') })),
     lists
   };
 }
@@ -110,7 +116,8 @@ export function cleanOrder(f) {
   const o = {
     name: str(f.name, 120), email: str(f.email, 200), phone: str(f.phone, 40),
     eventType: str(f.eventType, 80), eventDate: str(f.eventDate, 10), fulfillment: str(f.fulfillment, 20),
-    time: str(f.time, 5), address: str(f.address, 300), allergies: str(f.allergies, 500), notes: str(f.notes, 3000),
+    time: str(f.time, 5), address: str(f.address, 300), zip: str(f.zip, 10), zone: str(f.zone, 80),
+    allergies: str(f.allergies, 500), notes: str(f.notes, 3000),
     paymentMethod: str(f.paymentMethod, 60), initials: str(f.initials, 6), agreed: f.agreed === true,
     signature: String(f.signature || '')
   };
@@ -129,27 +136,128 @@ export function cleanOrder(f) {
   if (o.signature.length > 600000) throw new Error('Signature image is too large.');
   if (o.time && !/^\d{2}:\d{2}$/.test(o.time)) o.time = '';
   const items = Array.isArray(f.items) ? f.items.slice(0, 30) : [];
-  o.items = items.map((it) => ({
-    product: str(it.product, 80), size: str(it.size, 80), choice1: str(it.choice1, 80), choice2: str(it.choice2, 80),
-    qty: Math.min(999, Math.max(1, Math.round(num(it.qty) || 1))), notes: str(it.notes, 2000)
-  })).filter((it) => it.product && it.size);
+  // Items from a prepared link only carry a ref (+ the customer's choices); the server fills in the rest.
+  o.items = items.map((it) => cleanItem(it)).filter((it) => it.ref || (it.product && (it.size || it.tiers)));
   if (!o.items.length) throw new Error('Please add at least one item.');
   return o;
 }
 
+const str_ = (v, max = 500) => String(v ?? '').trim().slice(0, max);
+/** One order line. A tiered cake has tiers: [{size, choice1, choice2}] and no single size. */
+export function cleanItem(it) {
+  const out = {
+    product: str_(it && it.product, 80), size: str_(it && it.size, 80),
+    choice1: str_(it && it.choice1, 80), choice2: str_(it && it.choice2, 80),
+    qty: Math.min(999, Math.max(1, Math.round(num(it && it.qty) || 1))),
+    notes: str_(it && it.notes, 2000), customerNotes: str_(it && it.customerNotes, 1000),
+    ref: str_(it && it.ref, 20)
+  };
+  if (it && it.price !== undefined && it.price !== null && it.price !== '') out.price = r2(num(it.price));
+  if (it && Array.isArray(it.tiers) && it.tiers.length) {
+    out.tiers = it.tiers.slice(0, 12).map((t) => ({ size: str_(t && t.size, 80), choice1: str_(t && t.choice1, 80), choice2: str_(t && t.choice2, 80) }));
+    out.size = '';
+  }
+  if (it && it.added) out.added = true;
+  return out;
+}
+
+// ───────── delivery zones ─────────
+/** "10001-10282, 10451" → [[10001,10282],[10451,10451]] */
+export function parseZips(text) {
+  return String(text || '').split(/[,\s]+/).map((p) => p.trim()).filter(Boolean).map((p) => {
+    const m = p.match(/^(\d{5})(?:-(\d{5}))?$/);
+    return m ? [+m[1], +(m[2] || m[1])] : null;
+  }).filter(Boolean);
+}
+export function matchZone(zip, zones) {
+  const z = String(zip || '').match(/\d{5}/);
+  if (!z) return null;
+  const n = +z[0];
+  return zones.find((zone) => parseZips(zone.zips).some(([a, b]) => n >= a && n <= b)) || null;
+}
+
 // ───────── pricing ─────────
-export function priceOrder(items, products, paymentMethod, settings) {
+/** Line price = the price you agreed (item.price), or the menu's minimum price for items the customer added. */
+export function priceOrder(items, products, paymentMethod, settings, deliveryFee = 0) {
   const s = settingsWithDefaults(settings);
   const lines = items.map((it) => {
-    const p = products.find((x) => norm(x.product) === norm(it.product) && norm(x.size) === norm(it.size));
-    const unit = p ? num(p.price) : 0;
+    let unit = it.price;
+    if (unit === undefined) {
+      const p = products.find((x) => norm(x.product) === norm(it.product) && norm(x.size) === norm(it.size));
+      unit = p ? num(p.price) : 0;
+    }
     return { item: it, unitPrice: unit, amount: r2(unit * it.qty) };
   });
   const subtotal = r2(lines.reduce((a, l) => a + l.amount, 0));
+  const delivery = r2(num(deliveryFee));
   const isCard = !!s.card_fee_method && norm(paymentMethod) === norm(s.card_fee_method);
   const pct = isCard ? num(s.card_fee_pct) : 0;
-  const fee = r2(subtotal * pct / 100);
-  return { lines, subtotal, fee, feePct: pct, total: r2(subtotal + fee) };
+  const fee = r2((subtotal + delivery) * pct / 100);
+  return { lines, subtotal, delivery, fee, feePct: pct, total: r2(subtotal + delivery + fee) };
+}
+
+/** Which choice lists an item needs (e.g. ["Cake Flavor", "Filling"]), from the menu. */
+export function choiceLists(products, product, size) {
+  const p = products.find((x) => norm(x.product) === norm(product) && (!size || norm(x.size) === norm(size))) ||
+    products.find((x) => norm(x.product) === norm(product));
+  return p ? [String(p.choice1 || '').trim(), String(p.choice2 || '').trim()] : ['', ''];
+}
+export const isTiered = (products, product) => products.some((p) => norm(p.product) === norm(product) && yes(p.tiered));
+
+/**
+ * Combine what you prepared (locked) with what the customer submitted.
+ * - Prepared items keep their product, sizes/tiers and price. Flavors you left open come from the customer.
+ * - Quantity can change on non-tiered items (cookies, pops…); a change is flagged.
+ * - Extra items the customer added get the menu's minimum price and are flagged.
+ * Returns { items, changes[] } or throws a customer-facing Error.
+ */
+export function mergeCustomerItems(prepared, submitted, products) {
+  const changes = [];
+  const items = [];
+  const byRef = Object.fromEntries((submitted || []).filter((s) => s.ref).map((s) => [s.ref, s]));
+  prepared.forEach((p, i) => {
+    const sub = byRef[p.ref || 'p' + i] || {};
+    const it = JSON.parse(JSON.stringify(p));
+    delete it.added;
+    if (it.tiers) {
+      it.tiers.forEach((t, k) => {
+        const st = (sub.tiers || [])[k] || {};
+        if (!t.choice1) t.choice1 = st.choice1 || '';
+        if (!t.choice2) t.choice2 = st.choice2 || '';
+      });
+    } else {
+      if (!it.choice1) it.choice1 = sub.choice1 || '';
+      if (!it.choice2) it.choice2 = sub.choice2 || '';
+      if (sub.qty && sub.qty !== it.qty) {
+        changes.push(`Changed quantity of ${it.size} ${it.product} from ${it.qty} to ${sub.qty}`);
+        it.qty = sub.qty;
+      }
+    }
+    if (sub.customerNotes) { it.customerNotes = sub.customerNotes; changes.push(`Note on ${itemName(it)}: "${sub.customerNotes}"`); }
+    items.push(it);
+  });
+  for (const s of submitted || []) {
+    if (s.ref && prepared.some((p, i) => (p.ref || 'p' + i) === s.ref)) continue;
+    const menu = products.find((x) => norm(x.product) === norm(s.product) && norm(x.size) === norm(s.size));
+    if (!menu || !yes(menu.addon) || yes(menu.tiered)) throw Object.assign(new Error(`"${s.size} ${s.product}" can't be added on this form. Please contact us about it.`), { userFacing: true });
+    const it = cleanItem({ ...s, tiers: undefined, ref: '', price: num(menu.price), added: true });
+    items.push(it);
+    changes.push(`Added: ${itemLabel(it)} (minimum price ${money(num(menu.price))} each)`);
+  }
+  return { items, changes };
+}
+
+/** Every item (and every tier) has the flavors its menu row asks for. Returns the first problem or ''. */
+export function missingChoices(items, products) {
+  for (const [i, it] of items.entries()) {
+    const parts = it.tiers ? it.tiers.map((t, k) => ({ ...t, label: `tier ${k + 1} of item ${i + 1}` })) : [{ ...it, label: `item ${i + 1}` }];
+    for (const part of parts) {
+      const [l1, l2] = choiceLists(products, it.product, part.size);
+      if (l1 && !part.choice1) return `Please choose the ${l1.toLowerCase()} for ${part.label}.`;
+      if (l2 && !part.choice2) return `Please choose the ${l2.toLowerCase()} for ${part.label}.`;
+    }
+  }
+  return '';
 }
 
 // ───────── ingredients & inventory ─────────
@@ -166,7 +274,8 @@ export function computeNeeds(items, recipes) {
   }
   const needs = {};
   const missing = [];
-  for (const it of items) {
+  for (const whole of items) {
+   for (const it of expandTiers(whole)) {
     const parts = [it.product, it.choice1, it.choice2].filter((x) => x && String(x).trim());
     parts.forEach((name, i) => {
       const rows = (index[norm(name) + '|' + norm(it.size)] || []).concat(index[norm(name) + '|*'] || []);
@@ -176,8 +285,14 @@ export function computeNeeds(items, recipes) {
         needs[ing] = r3((needs[ing] || 0) + num(r.amount) * (it.qty || 1));
       }
     });
+   }
   }
   return { needs, missing };
+}
+
+/** A tiered cake counts as one cake per tier (each with its own size and flavors). */
+export function expandTiers(it) {
+  return it.tiers ? it.tiers.map((t) => ({ product: it.product, size: t.size, choice1: t.choice1, choice2: t.choice2, qty: it.qty || 1 })) : [it];
 }
 
 /** openOrders: [{items:[...]}]. Returns rows with reserved/left plus problems. */
@@ -227,21 +342,29 @@ export function shortagesForOrder(items, status, recipes) {
 export function deductions(items, recipes) { return computeNeeds(items, recipes).needs; }
 
 // ───────── text summaries ─────────
-export const itemLabel = (it) => `${it.qty} × ${it.size} ${it.product}` +
-  (it.choice1 || it.choice2 ? ' – ' + [it.choice1, it.choice2].filter(Boolean).join(' / ') : '');
-export const itemsSummary = (items) => items.map((it) => '• ' + itemLabel(it) + (it.notes ? ` (${it.notes})` : '')).join('\n');
-export const shortItems = (items) => items.map((it) => (it.qty > 1 ? it.qty + '× ' : '') + it.size + ' ' + it.product).join(', ');
+const flav = (x) => [x.choice1, x.choice2].filter(Boolean).join(' / ');
+export const itemName = (it) => it.tiers ? `${it.tiers.length}-tier ${it.product}` : `${it.size} ${it.product}`;
+export const itemLabel = (it) => it.tiers
+  ? `${it.qty} × ${it.tiers.length}-tier ${it.product} (` + it.tiers.map((t) => t.size + (flav(t) ? ' ' + flav(t) : '')).join(' · ') + ')'
+  : `${it.qty} × ${it.size} ${it.product}` + (flav(it) ? ' – ' + flav(it) : '');
+export const itemsSummary = (items) => items.map((it) => '• ' + itemLabel(it) + (it.notes ? ` (${it.notes})` : '') + (it.customerNotes ? ` [customer: ${it.customerNotes}]` : '')).join('\n');
+export const shortItems = (items) => items.map((it) => (it.qty > 1 ? it.qty + '× ' : '') + itemName(it)).join(', ');
 
 /** order: row shape {id, name, email, phone, event_type, event_date, time, fulfillment, address, items, allergies, notes, payment_method, subtotal, fee, total} */
 export function orderHtml(o, { forCustomer = false } = {}) {
   const row = (k, v) => v ? `<tr><td style="color:#666;padding:3px 12px 3px 0;vertical-align:top">${esc(k)}</td><td style="padding:3px 0"><b>${esc(v)}</b></td></tr>` : '';
   const items = '<ol style="margin:4px 0 0 18px;padding:0">' + o.items.map((it) =>
-    `<li style="margin-bottom:6px"><b>${esc(itemLabel(it))}</b>${it.notes ? `<br><span style="color:#555">${esc(it.notes)}</span>` : ''}</li>`).join('') + '</ol>';
-  const pay = forCustomer ? '' : row('Starting price', money(o.subtotal)) + (o.fee ? row('Card fee', money(o.fee)) : '') + row('Total', money(o.total));
+    `<li style="margin-bottom:6px"><b>${esc(itemLabel(it))}</b>${it.added ? ' <i style="color:#8a5a00">(added by customer)</i>' : ''}` +
+    (it.notes ? `<br><span style="color:#555">${esc(it.notes)}</span>` : '') +
+    (it.customerNotes ? `<br><span style="color:#8a5a00">Customer note: ${esc(it.customerNotes)}</span>` : '') + '</li>').join('') + '</ol>';
+  const pay = row('Items', money(o.subtotal)) + (o.delivery_fee ? row('Delivery' + (o.delivery_zone ? ' (' + o.delivery_zone + ')' : ''), money(o.delivery_fee)) : '') +
+    (o.fee ? row('Card fee', money(o.fee)) : '') + row(forCustomer ? 'Total' : 'Total', money(o.total));
   return `<h3 style="margin:0 0 6px">Order #${orderNo(o.id)} – ${esc(o.name)}</h3><table style="font-size:14px">` +
     row('Event', [o.event_type, displayDate(o.event_date), displayTime(o.time)].filter(Boolean).join(' · ')) +
     row(o.fulfillment === 'Delivery' ? 'Deliver to' : 'Pickup / delivery', o.fulfillment === 'Delivery' ? o.address : (o.fulfillment || 'Pickup')) + row('Phone', o.phone) + row('Email', o.email) + row('Payment', o.payment_method) + pay +
-    row('Allergies', o.allergies) + row('Notes', o.notes) + `</table><div style="margin-top:8px"><b>Items</b>${items}</div>`;
+    row('Allergies', o.allergies) + row('Notes', o.notes) + `</table>` +
+    (o.design_summary ? `<div style="margin-top:8px"><b>Design</b><div style="white-space:pre-wrap">${esc(o.design_summary)}</div></div>` : '') +
+    `<div style="margin-top:8px"><b>Items</b>${items}</div>`;
 }
 
 export function shortageHtml(sh) {
@@ -260,16 +383,30 @@ export function ownerEmail(o, { shortages, links = {}, problems = [] }) {
   const linkHtml = Object.entries(links).filter(([, u]) => u).map(([k, u]) => `<a href="${esc(u)}">${esc(k)}</a>`).join(' · ');
   return {
     subject: (shortages && shortages.short.length ? '⚠️ SHORT ON INGREDIENTS – ' : '') + `New order #${orderNo(o.id)}: ${o.name} – ${displayDate(o.event_date)}`,
-    html: shortageHtml(shortages) + (linkHtml ? `<p>${linkHtml}</p>` : '') + orderHtml(o) +
+    html: shortageHtml(shortages) + changesHtml(o.changes) + (linkHtml ? `<p>${linkHtml}</p>` : '') + orderHtml(o) +
       (problems.length ? `<p style="color:#b00"><b>Needs your attention:</b><br>${problems.map(esc).join('<br>')}</p>` : '')
   };
 }
 
-export function customerEmail(o, settings) {
+export function changesHtml(changes) {
+  return changes && changes.length ? `<div style="background:#fff4dc;border:1px solid #e8c77a;padding:12px;border-radius:8px;margin-bottom:14px"><b>✋ The customer changed or added something – review before confirming:</b><ul>` +
+    changes.map((c) => `<li>${esc(c)}</li>`).join('') + '</ul></div>' : '';
+}
+
+/** kind: 'received' (on submit) or 'confirmed' (when you confirm). */
+export function customerEmail(o, settings, kind = 'received') {
   const s = settingsWithDefaults(settings);
+  const first = esc(o.name.split(' ')[0]);
+  if (kind === 'confirmed') return {
+    subject: `${s.business_name} – your order is confirmed (#${orderNo(o.id)})`,
+    html: `<p>Hi ${first},</p><p>Good news – your order is <b>confirmed</b>. Here are the details for your records.</p>` +
+      orderHtml(o, { forCustomer: true }) + `<p>– ${esc(s.business_name)}</p>`
+  };
   return {
-    subject: `${s.business_name} – we received your order form (#${orderNo(o.id)})`,
-    html: `<p>Hi ${esc(o.name.split(' ')[0])},</p><p>Thank you! We received your order form. We'll review it and send your invoice shortly.</p>` +
+    subject: `${s.business_name} – order received, pending final review (#${orderNo(o.id)})`,
+    html: `<p>Hi ${first},</p><p>Thank you! We received your order. It is <b>pending our final review</b>` +
+      (o.changes && o.changes.length ? ' (we\'ll look over the changes you made)' : '') +
+      ` and payment. We'll email you again once it's confirmed.</p>` +
       orderHtml(o, { forCustomer: true }) + signedBlockHtml(o) + `<p>– ${esc(s.business_name)}</p>`
   };
 }
@@ -307,10 +444,13 @@ export function squareOrderBody(o, pricing, locationId, customerId, settings, uu
         const li = { name: `${it.size} ${it.product}` + (it.choice1 || it.choice2 ? ' – ' + [it.choice1, it.choice2].filter(Boolean).join(' / ') : ''),
           quantity: String(it.qty), base_price_money: { amount: Math.round(l.unitPrice * 100), currency: s.currency } };
         if (it.notes) li.note = it.notes.slice(0, 2000);
+        if (it.tiers) li.name = itemLabel({ ...it, qty: 1 }).replace(/^1 × /, '');
         return li;
       })
     }
   };
+  if (pricing.delivery > 0) body.order.line_items.push({ name: 'Delivery' + (o.delivery_zone ? ' – ' + o.delivery_zone : ''), quantity: '1',
+    base_price_money: { amount: Math.round(pricing.delivery * 100), currency: s.currency } });
   if (pricing.fee > 0) body.order.service_charges = [{ name: `Credit card fee (${pricing.feePct}%)`, percentage: String(pricing.feePct), calculation_phase: 'SUBTOTAL_PHASE' }];
   return body;
 }
@@ -375,11 +515,18 @@ export function buildIcs(orders, settings, { method } = {}) {
 
 // ───────── Sample data (first run) ─────────
 export function sampleData() {
+  // price = minimum price, used only when a customer adds the item themselves. Prepared orders use the price you set.
   const products = [
-    ['Cake', '6" round', 85, 'Cake Flavor', 'Filling'], ['Cake', '8" round', 120, 'Cake Flavor', 'Filling'], ['Cake', '10" round', 165, 'Cake Flavor', 'Filling'],
-    ['Cookies', '1 dozen', 48, 'Cookie Flavor', ''], ['Cake Pops', '1 dozen', 42, 'Cake Flavor', 'Coating'],
-    ['Rice Krispie Pops', '1 dozen', 40, '', 'Coating'], ['Dessert Cups', '1 dozen', 45, 'Cake Flavor', 'Filling']
-  ].map(([product, size, price, choice1, choice2]) => ({ product, size, price, choice1, choice2 }));
+    ['Cake', '6" round', 85, 'Cake Flavor', 'Filling', 'yes', ''], ['Cake', '8" round', 120, 'Cake Flavor', 'Filling', 'yes', ''],
+    ['Cake', '10" round', 165, 'Cake Flavor', 'Filling', 'yes', ''],
+    ['Cookies', '1 dozen', 48, 'Cookie Flavor', '', '', 'yes'], ['Cake Pops', '1 dozen', 72, 'Cake Flavor', 'Coating', '', 'yes'],
+    ['Rice Krispie Pops', '1 dozen', 60, '', 'Coating', '', 'yes'], ['Dessert Cups', '1 dozen', 54, 'Cake Flavor', 'Filling', '', 'yes']
+  ].map(([product, size, price, choice1, choice2, tiered, addon]) => ({ product, size, price, choice1, choice2, tiered, addon }));
+  // SAMPLE zones and fees – replace with your own.
+  const zones = [
+    ['Brooklyn', 40, '11201-11256'], ['Manhattan', 85, '10001-10282'], ['Queens', 55, '11004-11109, 11351-11697'],
+    ['Bronx', 60, '10451-10475'], ['Staten Island', 65, '10301-10314'], ['Long Island', 75, '11501-11980'], ['New Jersey', 90, '07001-08989']
+  ].map(([zone, fee, zips]) => ({ zone, fee, zips }));
   const choices = [
     ['Cake Flavor', 'Vanilla'], ['Cake Flavor', 'Chocolate'], ['Cake Flavor', 'Red Velvet'], ['Cake Flavor', 'Funfetti'],
     ['Filling', 'Vanilla Buttercream'], ['Filling', 'Chocolate Ganache'], ['Filling', 'Raspberry'], ['Filling', 'Cookies & Cream'],
@@ -421,5 +568,5 @@ export function sampleData() {
   add('White Chocolate', dz, 'Candy melts', 0.75, 'Coating'); add('Milk Chocolate', dz, 'Candy melts', 0.75, 'Coating');
   for (const [name, ings] of Object.entries(cakes)) for (const [i, a] of ings) add(name, dz, i, a * 0.4, 'Cake pops / dessert cups');
   for (const [name, ings] of Object.entries(fillings)) for (const [i, a] of ings) add(name, dz, i, a * 0.5, 'Dessert cups');
-  return { products, choices, inventory, recipes: R };
+  return { products, choices, zones, inventory, recipes: R };
 }

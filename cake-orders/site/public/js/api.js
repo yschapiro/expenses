@@ -4,7 +4,8 @@
 // handle(req, ctx) where
 //   req = { method, path, query, body, adminKey }
 //   ctx = {
-//     db:  { getSettings, saveSettings, getTable, replaceTable, insertOrder, updateOrder, getOrder, listOrders, adjustInventory },
+//     db:  { getSettings, saveSettings, getTable, replaceTable, insertOrder, updateOrder, getOrder, listOrders, adjustInventory,
+//            findOrderByToken, insertImage, getImage, insertFeedback, listFeedback, updateFeedback },
 //     adminPassword,            // string; admin routes require req.adminKey === adminPassword
 //     sendEmail?(to, subject, html, attachments?) // optional
 //     squareToken?,             // optional
@@ -19,8 +20,14 @@ const fail = (status, message) => ({ status, data: { error: message } });
 export async function handle(req, ctx) {
   const { method, path } = req;
   try {
+    let pm;
     if (method === 'GET' && path === '/config') return ok(await getConfig(ctx));
     if (method === 'POST' && path === '/orders') return ok(await submitOrder(req.body, ctx, req));
+    if (method === 'GET' && (pm = path.match(/^\/order\/([A-Za-z0-9]{16,64})$/))) return await preparedOrder(pm[1], ctx);
+    if (method === 'GET' && (pm = path.match(/^\/images\/([A-Za-z0-9]{16,64})$/))) {
+      const data = await ctx.db.getImage(pm[1]);
+      return data ? ok({ data }) : fail(404, 'Image not found');
+    }
     if (method === 'GET' && path === '/calendar.ics') return await calendarFeed(req, ctx);
 
     if (path.startsWith('/admin/')) {
@@ -44,9 +51,23 @@ function safeEqual(a, b) {
 }
 
 async function getConfig(ctx) {
-  const [s, products, choices] = await Promise.all([ctx.db.getSettings(), ctx.db.getTable('products'), ctx.db.getTable('choices')]);
-  return C.formConfig(s, products, choices);
+  const [s, products, choices, zones] = await Promise.all([ctx.db.getSettings(), ctx.db.getTable('products'), ctx.db.getTable('choices'), ctx.db.getTable('zones')]);
+  return C.formConfig(s, products, choices, zones);
 }
+
+// ───────── prepared order link (what the customer opens) ─────────
+async function preparedOrder(token, ctx) {
+  const o = await ctx.db.findOrderByToken(token);
+  if (!o) return fail(404, 'This order link is not valid. Please contact us for a new one.');
+  if (o.status !== 'Draft') return ok({ submitted: true, orderNo: C.orderNo(o.id), name: o.name });
+  return ok({
+    submitted: false, orderNo: C.orderNo(o.id),
+    name: o.name, email: o.email, phone: o.phone, eventType: o.event_type, eventDate: o.event_date, time: o.time,
+    fulfillment: o.fulfillment, designSummary: o.design_summary, images: o.images || [], items: o.prefill_items || []
+  });
+}
+
+const userError = (msg) => Object.assign(new Error(msg), { userFacing: true });
 
 // ───────── new order ─────────
 async function submitOrder(body, ctx, req) {
@@ -54,19 +75,50 @@ async function submitOrder(body, ctx, req) {
   let f;
   try { f = C.cleanOrder(body); } catch (e) { e.userFacing = true; throw e; }
 
-  const [settings, products, recipes] = await Promise.all([ctx.db.getSettings(), ctx.db.getTable('products'), ctx.db.getTable('recipes')]);
+  const [settings, products, recipes, zones] = await Promise.all([ctx.db.getSettings(), ctx.db.getTable('products'), ctx.db.getTable('recipes'), ctx.db.getTable('zones')]);
   const s = C.settingsWithDefaults(settings);
-  const pricing = C.priceOrder(f.items, products, f.paymentMethod, settings);
+
+  // Prepared link: lock in what you agreed; take the customer's flavors, quantities and extras.
+  let draft = null;
+  let changes = [];
+  if (body.token) {
+    draft = await ctx.db.findOrderByToken(String(body.token));
+    if (!draft) throw userError('This order link is not valid. Please contact us for a new one.');
+    if (draft.status !== 'Draft') throw userError('This order was already submitted. Please contact us to make changes.');
+    const merged = C.mergeCustomerItems(draft.prefill_items || [], f.items, products);
+    f.items = merged.items;
+    changes = merged.changes;
+  } else {
+    f.items = f.items.filter((it) => it.product).map(({ ref, price, added, ...it }) => it); // the general form can't set prices
+  }
+  if (!f.items.length) throw userError('Please add at least one item.');
+  const missing = C.missingChoices(f.items, products);
+  if (missing) throw userError(missing);
+
+  // Delivery zone and fee
+  let zone = null;
+  if (f.fulfillment === 'Delivery' && zones.length) {
+    zone = C.matchZone(f.zip, zones) || zones.find((z) => C.norm(z.zone) === C.norm(f.zone));
+    if (!zone) throw userError('Please choose your delivery area.');
+  }
+  const pricing = C.priceOrder(f.items, products, f.paymentMethod, settings, zone ? zone.fee : 0);
 
   const row = {
-    created_at: ctx.nowIso(), status: 'New',
+    status: 'New', submitted_at: ctx.nowIso(),
     name: f.name, email: f.email, phone: f.phone, event_type: f.eventType, event_date: f.eventDate,
-    fulfillment: f.fulfillment, time: f.time, address: f.address, items: f.items, allergies: f.allergies, notes: f.notes,
-    payment_method: f.paymentMethod, subtotal: pricing.subtotal, fee: pricing.fee, total: pricing.total,
+    fulfillment: f.fulfillment, time: f.time, address: f.address, zip: f.zip, delivery_zone: zone ? zone.zone : '', delivery_fee: pricing.delivery,
+    items: f.items, allergies: f.allergies, notes: f.notes,
+    payment_method: f.paymentMethod, payment_status: 'Unpaid', subtotal: pricing.subtotal, fee: pricing.fee, total: pricing.total,
     initials: f.initials, terms_text: s.terms, terms_accepted_at: ctx.nowIso(), signature: f.signature,
-    client_info: String(req.clientInfo || '').slice(0, 300), square_invoice_id: '', square_invoice_url: '', deducted_at: ''
+    client_info: String(req.clientInfo || '').slice(0, 300), changes, needs_review: changes.length ? 1 : 0
   };
-  row.id = await ctx.db.insertOrder(row);
+  if (draft) {
+    await ctx.db.updateOrder(draft.id, row);
+    Object.assign(row, { id: draft.id, design_summary: draft.design_summary, images: draft.images, token: draft.token });
+  } else {
+    Object.assign(row, { created_at: ctx.nowIso(), square_invoice_id: '', square_invoice_url: '', deducted_at: '', token: '', design_summary: '', images: [], prefill_items: [] });
+    row.id = await ctx.db.insertOrder(row);
+  }
 
   const problems = [];
   const links = {};
@@ -97,11 +149,11 @@ async function submitOrder(body, ctx, req) {
       } catch (e) { console.error('owner email', e); }
     }
     if (C.yes(s.send_customer_copy)) {
-      try { const m = C.customerEmail(row, settings); await ctx.sendEmail(f.email, m.subject, m.html, [], ownerTo); }
+      try { const m = C.customerEmail(row, settings, 'received'); await ctx.sendEmail(f.email, m.subject, m.html, [], ownerTo); }
       catch (e) { console.error('customer email', e); }
     }
   }
-  return { orderNo: C.orderNo(row.id), id: row.id, shortages, problems };
+  return { orderNo: C.orderNo(row.id), id: row.id, shortages, problems, needsReview: !!changes.length };
 }
 
 async function currentInventory(ctx, recipes) {
@@ -139,7 +191,7 @@ async function createSquareInvoice(o, pricing, settings, ctx) {
 async function calendarFeed(req, ctx) {
   const settings = await ctx.db.getSettings();
   if (!settings._calendar_key || !safeEqual(String(req.query.key || ''), settings._calendar_key)) return fail(403, 'Bad calendar key');
-  const orders = (await ctx.db.listOrders()).filter((o) => o.status !== 'Cancelled');
+  const orders = (await ctx.db.listOrders()).filter((o) => o.status !== 'Cancelled' && o.status !== 'Draft');
   return { status: 200, raw: C.buildIcs(orders, settings), contentType: 'text/calendar; charset=utf-8' };
 }
 async function ensureCalendarKey(ctx) {
@@ -163,7 +215,51 @@ async function admin(req, ctx) {
   }
   if (method === 'GET' && path === '/admin/orders') {
     const orders = await ctx.db.listOrders();
-    return ok(orders.map(({ signature, terms_text, ...o }) => ({ ...o, orderNo: C.orderNo(o.id) })));
+    return ok(orders.map(({ signature, terms_text, prefill_items, ...o }) => ({ ...o, orderNo: C.orderNo(o.id) })));
+  }
+  // Prepare a private order link after your design conversation
+  if (method === 'POST' && path === '/admin/drafts') return ok(await saveDraft(null, body, ctx));
+  if ((m = path.match(/^\/admin\/drafts\/(\d+)$/)) && method === 'PUT') return ok(await saveDraft(+m[1], body, ctx));
+  if (method === 'POST' && path === '/admin/images') {
+    const data = String(body && body.data || '');
+    if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(data)) return fail(400, 'Please upload a JPG, PNG or WebP image.');
+    if (data.length > 1_400_000) return fail(400, 'That image is too large.');
+    const id = ctx.uuid().replace(/-/g, '');
+    await ctx.db.insertImage(id, data);
+    return ok({ id });
+  }
+  if ((m = path.match(/^\/admin\/orders\/(\d+)\/reviewed$/)) && method === 'POST') {
+    await ctx.db.updateOrder(+m[1], { needs_review: 0 });
+    return ok({ ok: true });
+  }
+  if ((m = path.match(/^\/admin\/orders\/(\d+)\/payment$/)) && method === 'POST') {
+    const ps = String(body && body.payment_status || '');
+    if (!C.PAYMENT_STATUSES.includes(ps)) return fail(400, 'Bad payment status');
+    await ctx.db.updateOrder(+m[1], { payment_status: ps });
+    return ok({ ok: true });
+  }
+  // Report-an-issue notes (during development)
+  if (path === '/admin/feedback' && method === 'POST') {
+    const note = String(body && body.note || '').trim().slice(0, 5000);
+    if (!note) return fail(400, 'Please write what you noticed.');
+    const shot = String(body && body.screenshot || '');
+    const id = await ctx.db.insertFeedback({ created_at: ctx.nowIso(), page: String(body.page || '').slice(0, 300), note,
+      screenshot: /^data:image\/(jpeg|png);base64,/.test(shot) && shot.length < 1_500_000 ? shot : '', status: 'New', reply: '' });
+    return ok({ id });
+  }
+  if (path === '/admin/feedback' && method === 'GET') {
+    const list = await ctx.db.listFeedback();
+    return ok(req.query && req.query.full ? list : list.map(({ screenshot, ...f }) => ({ ...f, hasScreenshot: !!screenshot })));
+  }
+  if ((m = path.match(/^\/admin\/feedback\/(\d+)$/))) {
+    if (method === 'GET') { const f = (await ctx.db.listFeedback()).find((x) => x.id === +m[1]); return f ? ok(f) : fail(404, 'Not found'); }
+    if (method === 'POST') {
+      const patch = {};
+      if (body && FEEDBACK_STATUSES.includes(body.status)) patch.status = body.status;
+      if (body && body.reply != null) patch.reply = String(body.reply).slice(0, 5000);
+      await ctx.db.updateFeedback(+m[1], patch);
+      return ok({ ok: true });
+    }
   }
   if ((m = path.match(/^\/admin\/orders\/(\d+)$/)) && method === 'GET') {
     const o = await ctx.db.getOrder(+m[1]);
@@ -175,20 +271,28 @@ async function admin(req, ctx) {
     if (!C.STATUSES.includes(status)) return fail(400, 'Bad status');
     const o = await ctx.db.getOrder(id);
     if (!o) return fail(404, 'No such order');
+    if (status === 'Confirmed' && o.needs_review) return fail(400, 'The customer changed or added something. Review it and press "Changes reviewed" before confirming.');
     const patch = { status };
+    if (status === 'Confirmed' && o.status !== 'Confirmed' && !o.confirmed_email_at && ctx.sendEmail) {
+      const settings = await ctx.db.getSettings();
+      if (C.yes(C.settingsWithDefaults(settings).send_customer_copy)) {
+        try { const em = C.customerEmail(o, settings, 'confirmed'); await ctx.sendEmail(o.email, em.subject, em.html, [], C.settingsWithDefaults(settings).owner_email); patch.confirmed_email_at = ctx.nowIso(); }
+        catch (e) { console.error('confirm email', e); }
+      }
+    }
     if (status === 'Done' && !o.deducted_at) {
       const used = C.deductions(o.items, await ctx.db.getTable('recipes'));
       for (const [ing, amt] of Object.entries(used)) await ctx.db.adjustInventory(ing, -amt);
       patch.deducted_at = ctx.nowIso();
     }
     await ctx.db.updateOrder(id, patch);
-    return ok({ ok: true, deducted: !!patch.deducted_at });
+    return ok({ ok: true, deducted: !!patch.deducted_at, emailed: !!patch.confirmed_email_at });
   }
   if ((m = path.match(/^\/admin\/orders\/(\d+)\/invoice$/)) && method === 'POST') {
     if (!ctx.squareToken) return fail(400, 'Square is not connected.');
     const o = await ctx.db.getOrder(+m[1]);
     const settings = await ctx.db.getSettings();
-    const pricing = C.priceOrder(o.items, await ctx.db.getTable('products'), o.payment_method, settings);
+    const pricing = C.priceOrder(o.items, await ctx.db.getTable('products'), o.payment_method, settings, o.delivery_fee);
     const inv = await createSquareInvoice(o, pricing, settings, ctx);
     await ctx.db.updateOrder(o.id, { square_invoice_id: inv.id, square_invoice_url: inv.url });
     return ok(inv);
@@ -229,6 +333,39 @@ async function admin(req, ctx) {
     return ok((r.locations || []).map((l) => ({ id: l.id, name: l.name })));
   }
   return fail(404, 'Not found');
+}
+
+export const FEEDBACK_STATUSES = ['New', 'In progress', 'Fixed', 'Won\'t do'];
+
+async function saveDraft(id, body, ctx) {
+  const b = body || {};
+  const str = (v, max) => String(v ?? '').trim().slice(0, max);
+  const items = (Array.isArray(b.items) ? b.items.slice(0, 30) : []).map((it, i) => ({ ...C.cleanItem(it), ref: 'p' + i }))
+    .filter((it) => it.product && (it.size || it.tiers));
+  if (!items.length) throw userError('Add at least one item.');
+  const fields = {
+    name: str(b.name, 120), email: str(b.email, 200), phone: str(b.phone, 40), event_type: str(b.eventType, 80),
+    event_date: /^\d{4}-\d{2}-\d{2}$/.test(b.eventDate || '') ? b.eventDate : '', time: /^\d{2}:\d{2}$/.test(b.time || '') ? b.time : '',
+    fulfillment: ['Pickup', 'Delivery'].includes(b.fulfillment) ? b.fulfillment : '',
+    design_summary: str(b.designSummary, 5000),
+    images: (Array.isArray(b.images) ? b.images : []).filter((x) => /^[A-Za-z0-9]{16,64}$/.test(x)).slice(0, 12),
+    prefill_items: items, items
+  };
+  const products = await ctx.db.getTable('products');
+  const pricing = C.priceOrder(items, products, '', {}, 0);
+  Object.assign(fields, { subtotal: pricing.subtotal, total: pricing.total, fee: 0 });
+  if (id) {
+    const o = await ctx.db.getOrder(id);
+    if (!o) throw userError('No such order.');
+    if (o.status !== 'Draft') throw userError('The customer already submitted this order, so the link can no longer be changed.');
+    await ctx.db.updateOrder(id, fields);
+    return { id, token: o.token, orderNo: C.orderNo(id) };
+  }
+  const token = (ctx.uuid() + ctx.uuid()).replace(/-/g, '').slice(0, 32);
+  const row = { ...fields, token, status: 'Draft', created_at: ctx.nowIso(), payment_status: 'Unpaid', changes: [], needs_review: 0,
+    square_invoice_id: '', square_invoice_url: '', deducted_at: '', signature: '', terms_text: '', initials: '' };
+  const newId = await ctx.db.insertOrder(row);
+  return { id: newId, token, orderNo: C.orderNo(newId) };
 }
 
 export async function weeklyEmail(ctx) {
